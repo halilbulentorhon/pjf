@@ -54,4 +54,4 @@ MIT
 
 ---
 
-<sub>Sadlı, vibe coded with Claude Code from start to finish :D</sub>
+<sub>Sadly, vibe coded with Claude Code from start to finish :D</sub>
