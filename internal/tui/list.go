@@ -14,21 +14,24 @@ import (
 )
 
 type listModel struct {
-	search   textinput.Model
-	projects []project.Project
-	filtered []project.Project
-	cursor   int
-	width    int
-	height   int
+	search     textinput.Model
+	projects   []project.Project
+	filtered   []project.Project
+	cursor     int
+	width      int
+	height     int
+	showHidden bool
+	isHidden   func(project.Project) bool
 }
 
-func newListModel() listModel {
+func newListModel(isHidden func(project.Project) bool) listModel {
 	ti := textinput.New()
 	ti.Placeholder = "search..."
 	ti.Prompt = "> "
 	ti.Focus()
 	return listModel{
-		search: ti,
+		search:   ti,
+		isHidden: isHidden,
 	}
 }
 
@@ -76,17 +79,29 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 }
 
 func (m *listModel) applyFilter() {
+	var source []project.Project
+	if m.showHidden {
+		source = m.projects
+	} else {
+		source = make([]project.Project, 0, len(m.projects))
+		for _, p := range m.projects {
+			if !m.isHidden(p) {
+				source = append(source, p)
+			}
+		}
+	}
+
 	query := strings.TrimSpace(m.search.Value())
 	if query == "" {
-		m.filtered = m.projects
+		m.filtered = source
 		m.cursor = 0
 		return
 	}
 
-	matches := fuzzy.FindFrom(query, projectSource(m.projects))
+	matches := fuzzy.FindFrom(query, projectSource(source))
 	m.filtered = make([]project.Project, len(matches))
 	for i, match := range matches {
-		m.filtered[i] = m.projects[match.Index]
+		m.filtered[i] = source[match.Index]
 	}
 	m.cursor = 0
 }
@@ -119,6 +134,7 @@ func (m listModel) View(width, height int, status string) string {
 		path := shortenPath(p.Path, home)
 		pType := p.ProjectType
 		branch := p.GitBranch
+		hidden := m.isHidden(p)
 
 		nameCol := lipgloss.NewStyle().Width(20).Render(name)
 		pathCol := pathStyle.Width(30).Render(path)
@@ -127,10 +143,18 @@ func (m listModel) View(width, height int, status string) string {
 
 		row := fmt.Sprintf("%s %s %s %s", nameCol, pathCol, typeCol, branchCol)
 
-		if i == m.cursor {
-			b.WriteString(selectedItemStyle.Render("▸ " + row) + "\n")
+		if hidden {
+			if i == m.cursor {
+				b.WriteString(hiddenSelectedItemStyle.Render("▸ "+row) + "\n")
+			} else {
+				b.WriteString(hiddenItemStyle.Render("  "+row) + "\n")
+			}
 		} else {
-			b.WriteString(itemStyle.Render("  " + row) + "\n")
+			if i == m.cursor {
+				b.WriteString(selectedItemStyle.Render("▸ "+row) + "\n")
+			} else {
+				b.WriteString(itemStyle.Render("  "+row) + "\n")
+			}
 		}
 	}
 
@@ -142,7 +166,14 @@ func (m listModel) View(width, height int, status string) string {
 	if status != "" {
 		b.WriteString(statusBarStyle.Render(status) + "\n")
 	}
-	b.WriteString(helpStyle.Render("enter: actions  r: refresh  ?: help  q: quit"))
+	if m.showHidden {
+		b.WriteString(helpStyle.Render("(showing hidden projects)") + "\n")
+	}
+	hint := "enter: actions  r: refresh  h: hidden  ?: help  q: quit"
+	if m.showHidden {
+		hint = "enter: actions  r: refresh  h: hide hidden  ?: help  q: quit"
+	}
+	b.WriteString(helpStyle.Render(hint))
 
 	return b.String()
 }
@@ -162,4 +193,15 @@ func (ps projectSource) String(i int) string {
 
 func (ps projectSource) Len() int {
 	return len(ps)
+}
+
+func (m *listModel) removeProject(path string) {
+	filtered := m.projects[:0]
+	for _, p := range m.projects {
+		if p.Path != path {
+			filtered = append(filtered, p)
+		}
+	}
+	m.projects = filtered
+	m.applyFilter()
 }

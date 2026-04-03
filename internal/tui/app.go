@@ -52,7 +52,7 @@ func New(svc *service.ProjectService, configPath string, isFirstRun bool) Model 
 		service:    svc,
 		configPath: configPath,
 		wizard:     newWizardModel(),
-		list:       newListModel(),
+		list:       newListModel(svc.IsHidden),
 		actions:    newActionsModel(),
 		help:       newHelpModel(),
 	}
@@ -201,9 +201,31 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "Rescanning..."
 			m.state = stateScanning
 			return m, m.scanCmd()
+		case "h":
+			m.list.showHidden = !m.list.showHidden
+			m.list.applyFilter()
+			if m.list.showHidden {
+				hasHidden := false
+				for _, p := range m.list.projects {
+					if m.service.IsHidden(p) {
+						hasHidden = true
+						break
+					}
+				}
+				if !hasHidden {
+					m.status = "No hidden projects"
+					m.list.showHidden = false
+				} else {
+					m.status = "Showing hidden projects"
+				}
+			} else {
+				m.status = ""
+			}
+			return m, nil
 		case "enter":
 			if p, ok := m.list.selected(); ok {
-				m.actions = newActionsModelForProject(p, m.service)
+				hidden := m.service.IsHidden(p)
+				m.actions = newActionsModelForProject(p, m.service, hidden)
 				m.state = stateActions
 				return m, nil
 			}
@@ -217,16 +239,32 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if msg.String() == "esc" {
+		if msg.String() == "esc" && !m.actions.confirming {
 			m.state = stateList
 			return m, nil
 		}
 	}
-	act, cmd, status := m.actions.Update(msg)
+	act, cmd, result := m.actions.Update(msg)
 	m.actions = act
-	if status != "" {
-		m.status = status
-		m.state = stateList
+	if result.status != "" {
+		m.status = result.status
+		switch result.action {
+		case "hide":
+			m.service.SaveConfig(m.configPath)
+			m.list.applyFilter()
+			m.state = stateList
+		case "unhide":
+			m.service.SaveConfig(m.configPath)
+			m.list.applyFilter()
+			m.state = stateList
+		case "delete":
+			m.service.SaveConfig(m.configPath)
+			m.service.RemoveFromCache(m.actions.project)
+			m.list.removeProject(m.actions.project.Path)
+			m.state = stateList
+		default:
+			m.state = stateList
+		}
 	}
 	return m, cmd
 }

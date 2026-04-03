@@ -1,41 +1,97 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/halilbulentorhon/pjf/internal/project"
 	"github.com/halilbulentorhon/pjf/internal/service"
 )
 
+type actionResult struct {
+	status string
+	action string
+}
+
 type actionItem struct {
-	label string
-	run   func() error
+	label  string
+	action string
+	run    func() error
 }
 
 type actionsModel struct {
-	project project.Project
-	items   []actionItem
-	cursor  int
+	project       project.Project
+	items         []actionItem
+	cursor        int
+	confirming    bool
+	confirmLabel  string
+	confirmFunc   func() error
+	confirmAction string
 }
 
 func newActionsModel() actionsModel {
 	return actionsModel{}
 }
 
-func newActionsModelForProject(p project.Project, svc *service.ProjectService) actionsModel {
+func newActionsModelForProject(p project.Project, svc *service.ProjectService, hidden bool) actionsModel {
 	items := []actionItem{
-		{label: "Open in Terminal", run: func() error { return svc.OpenTerminal(p) }},
-		{label: "Copy Path", run: func() error { return svc.CopyPath(p) }},
+		{label: "Open in Terminal", action: "open", run: func() error { return svc.OpenTerminal(p) }},
+		{label: "Copy Path", action: "copy", run: func() error { return svc.CopyPath(p) }},
 	}
+
+	if hidden {
+		items = append(items, actionItem{
+			label:  "Unhide",
+			action: "unhide",
+			run: func() error {
+				svc.UnhideProject(p)
+				return nil
+			},
+		})
+	} else {
+		items = append(items, actionItem{
+			label:  "Hide from List",
+			action: "hide",
+			run: func() error {
+				svc.HideProject(p)
+				return nil
+			},
+		})
+	}
+
+	items = append(items, actionItem{
+		label:  "Delete Project",
+		action: "delete",
+		run: func() error {
+			return svc.DeleteProject(p)
+		},
+	})
+
 	return actionsModel{
 		project: p,
 		items:   items,
 	}
 }
 
-func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, string) {
+func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, actionResult) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.confirming {
+			switch msg.String() {
+			case "y":
+				if err := m.confirmFunc(); err != nil {
+					return m, nil, actionResult{status: "Error: " + err.Error()}
+				}
+				m.confirming = false
+				return m, nil, actionResult{status: m.confirmLabel + " — done", action: m.confirmAction}
+			case "n", "esc":
+				m.confirming = false
+				return m, nil, actionResult{}
+			}
+			return m, nil, actionResult{}
+		}
+
 		switch msg.String() {
 		case "up", "k":
 			if m.cursor > 0 {
@@ -48,20 +104,47 @@ func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, string) {
 		case "enter":
 			if m.cursor < len(m.items) {
 				item := m.items[m.cursor]
-				if err := item.run(); err != nil {
-					return m, nil, "Error: " + err.Error()
+				switch item.action {
+				case "hide":
+					m.confirming = true
+					m.confirmLabel = item.label
+					m.confirmFunc = item.run
+					m.confirmAction = "hide"
+					return m, nil, actionResult{}
+				case "delete":
+					m.confirming = true
+					m.confirmLabel = item.label
+					m.confirmFunc = item.run
+					m.confirmAction = "delete"
+					return m, nil, actionResult{}
+				default:
+					if err := item.run(); err != nil {
+						return m, nil, actionResult{status: "Error: " + err.Error()}
+					}
+					return m, nil, actionResult{status: item.label + " — done", action: item.action}
 				}
-				return m, nil, item.label + " — done"
 			}
 		}
 	}
-	return m, nil, ""
+	return m, nil, actionResult{}
 }
 
 func (m actionsModel) View() string {
 	var b string
 	b += actionMenuStyle.Render(func() string {
-		s := titleStyle.Render(m.project.Name) + "\n\n"
+		title := m.project.Name
+		s := titleStyle.Render(title) + "\n\n"
+
+		if m.confirming {
+			switch m.confirmAction {
+			case "hide":
+				s += confirmStyle.Render(fmt.Sprintf("Hide %q from list? (y/n)", m.project.Name))
+			case "delete":
+				s += confirmStyle.Render(fmt.Sprintf("Delete %q?\nThis cannot be undone. (y/n)", m.project.Path))
+			}
+			return s
+		}
+
 		for i, item := range m.items {
 			if i == m.cursor {
 				s += selectedItemStyle.Render("▸ "+item.label) + "\n"
