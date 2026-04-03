@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/halilbulentorhon/pjf/internal/ide"
@@ -38,7 +40,15 @@ func newIDESubmenuModel(p project.Project, svc *service.ProjectService) ideSubme
 func (m ideSubmenuModel) Update(msg tea.Msg) (ideSubmenuModel, tea.Cmd, ideSubmenuResult) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
+		key := msg.String()
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+			idx := int(key[0] - '1')
+			if idx < len(m.ides) {
+				m.cursor = idx
+				key = "enter"
+			}
+		}
+		switch key {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -84,18 +94,19 @@ func (m ideSubmenuModel) View() string {
 		}
 
 		for i, ide := range m.ides {
+			num := fmt.Sprintf("%d. ", i+1)
 			label := ide.Name
 			if ide.Slug == m.defaultIDE {
 				label += " " + defaultMarkerStyle.Render("★")
 			}
 			if i == m.cursor {
-				s += selectedItemStyle.Render("▸ "+label) + "\n"
+				s += selectedItemStyle.Render("▸ "+num+label) + "\n"
 			} else {
-				s += itemStyle.Render("  "+label) + "\n"
+				s += itemStyle.Render("  "+num+label) + "\n"
 			}
 		}
 
-		s += "\n" + helpStyle.Render("enter: open  d: set default  esc: back")
+		s += "\n" + helpStyle.Render("1-9: select  enter: open  d: set default  esc: back")
 		return s
 	}())
 }

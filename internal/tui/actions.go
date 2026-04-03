@@ -38,8 +38,8 @@ func newActionsModelForProject(p project.Project, svc *service.ProjectService, h
 	items := []actionItem{
 		{label: "Open in IDE", action: "ide-submenu"},
 		{label: "Open in Terminal", action: "open", run: func() error { return svc.OpenTerminal(p) }},
-		{label: "Copy Path", action: "copy", run: func() error { return svc.CopyPath(p) }},
 		{label: "Run Command", action: "cmd-submenu"},
+		{label: "Copy Path", action: "copy", run: func() error { return svc.CopyPath(p) }},
 	}
 
 	if hidden {
@@ -94,7 +94,15 @@ func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, actionResult) 
 			return m, nil, actionResult{}
 		}
 
-		switch msg.String() {
+		key := msg.String()
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+			idx := int(key[0]-'1')
+			if idx < len(m.items) {
+				m.cursor = idx
+				key = "enter"
+			}
+		}
+		switch key {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -152,13 +160,14 @@ func (m actionsModel) View() string {
 		}
 
 		for i, item := range m.items {
+			num := fmt.Sprintf("%d. ", i+1)
 			if i == m.cursor {
-				s += selectedItemStyle.Render("▸ "+item.label) + "\n"
+				s += selectedItemStyle.Render("▸ "+num+item.label) + "\n"
 			} else {
-				s += itemStyle.Render("  "+item.label) + "\n"
+				s += itemStyle.Render("  "+num+item.label) + "\n"
 			}
 		}
-		s += "\n" + helpStyle.Render("enter: run  esc: back")
+		s += "\n" + helpStyle.Render("1-9: select  enter: run  esc: back")
 		return s
 	}())
 	return b

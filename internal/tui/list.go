@@ -66,6 +66,9 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				m.search.Blur()
 				return m, nil
 			case "esc":
+				if m.search.Value() == "" {
+					return m, tea.Quit
+				}
 				m.search.SetValue("")
 				m.applyFilter()
 				return m, nil

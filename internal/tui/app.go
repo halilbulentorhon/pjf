@@ -427,6 +427,10 @@ func (m *Model) updateCommandInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if result.command != "" {
 		p := m.cmdSubmenu.project
 		command := result.command
+		if result.save {
+			m.service.SaveCommand(p, command)
+			m.service.SaveConfig(m.configPath)
+		}
 		m.output = newOutputModel(command, m.height)
 		m.state = stateOutput
 		return m, func() tea.Msg {
@@ -441,7 +445,7 @@ func (m *Model) updateOutput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "esc" {
-			m.state = stateList
+			m.state = stateActions
 			return m, nil
 		}
 	}

@@ -228,3 +228,25 @@ func (s *ProjectService) RunCommand(p project.Project, command string) (string, 
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
+
+func (s *ProjectService) SaveCommand(p project.Project, command string) {
+	for i, pc := range s.Cfg.ProjectCommands {
+		expanded := pc.Path
+		if home, err := os.UserHomeDir(); err == nil && len(expanded) > 0 && expanded[0] == '~' {
+			expanded = home + expanded[1:]
+		}
+		if expanded == p.Path {
+			s.Cfg.ProjectCommands[i].Commands = append(s.Cfg.ProjectCommands[i].Commands, config.CommandDef{
+				Name:    command,
+				Command: command,
+			})
+			return
+		}
+	}
+	s.Cfg.ProjectCommands = append(s.Cfg.ProjectCommands, config.ProjectCommandSet{
+		Path: p.Path,
+		Commands: []config.CommandDef{
+			{Name: command, Command: command},
+		},
+	})
+}

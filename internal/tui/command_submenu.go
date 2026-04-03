@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/halilbulentorhon/pjf/internal/project"
@@ -32,7 +34,15 @@ func (m cmdSubmenuModel) totalItems() int {
 func (m cmdSubmenuModel) Update(msg tea.Msg) (cmdSubmenuModel, tea.Cmd, cmdSubmenuResult) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
+		key := msg.String()
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+			idx := int(key[0] - '1')
+			if idx < m.totalItems() {
+				m.cursor = idx
+				key = "enter"
+			}
+		}
+		switch key {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -59,6 +69,7 @@ func (m cmdSubmenuModel) View() string {
 		s := titleStyle.Render("Run Command") + "\n\n"
 
 		for i, cmd := range m.commands {
+			num := fmt.Sprintf("%d. ", i+1)
 			label := cmd.Name
 			if cmd.IsProject {
 				label += " " + helpStyle.Render("(project)")
@@ -66,9 +77,9 @@ func (m cmdSubmenuModel) View() string {
 				label += " " + helpStyle.Render("(global)")
 			}
 			if i == m.cursor {
-				s += selectedItemStyle.Render("▸ "+label) + "\n"
+				s += selectedItemStyle.Render("▸ "+num+label) + "\n"
 			} else {
-				s += itemStyle.Render("  "+label) + "\n"
+				s += itemStyle.Render("  "+num+label) + "\n"
 			}
 		}
 
@@ -76,14 +87,15 @@ func (m cmdSubmenuModel) View() string {
 			s += separatorStyle.Render("  ──────────────") + "\n"
 		}
 
+		customNum := fmt.Sprintf("%d. ", len(m.commands)+1)
 		customLabel := "Run custom command..."
 		if m.cursor == len(m.commands) {
-			s += selectedItemStyle.Render("▸ "+customLabel) + "\n"
+			s += selectedItemStyle.Render("▸ "+customNum+customLabel) + "\n"
 		} else {
-			s += itemStyle.Render("  "+customLabel) + "\n"
+			s += itemStyle.Render("  "+customNum+customLabel) + "\n"
 		}
 
-		s += "\n" + helpStyle.Render("enter: run  esc: back")
+		s += "\n" + helpStyle.Render("1-9: select  enter: run  esc: back")
 		return s
 	}())
 }
