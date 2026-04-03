@@ -13,10 +13,18 @@ import (
 	"github.com/halilbulentorhon/pjf/internal/tui"
 )
 
+var version = "dev"
+
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
-		uninstall()
-		return
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "uninstall":
+			uninstall()
+			return
+		case "--version", "-v":
+			fmt.Println("pjf " + version)
+			return
+		}
 	}
 
 	configPath := config.DefaultPath()

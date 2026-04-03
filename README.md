@@ -18,15 +18,32 @@ pjf scans your filesystem for git repositories, presents them in a fuzzy-searcha
 
 ## Installation
 
-### go install (recommended)
+### Homebrew (recommended)
 
-Requires [Go 1.22+](https://go.dev/dl/).
+```bash
+brew tap halilbulentorhon/tap
+brew install pjf
+```
+
+### Download binary
+
+Download from [GitHub Releases](https://github.com/halilbulentorhon/pjf/releases/latest):
+
+```bash
+# macOS Apple Silicon
+curl -sSL https://github.com/halilbulentorhon/pjf/releases/latest/download/pjf_darwin_arm64.tar.gz | tar xz
+sudo mv pjf /usr/local/bin/
+
+# macOS Intel
+curl -sSL https://github.com/halilbulentorhon/pjf/releases/latest/download/pjf_darwin_amd64.tar.gz | tar xz
+sudo mv pjf /usr/local/bin/
+```
+
+### go install
 
 ```bash
 go install github.com/halilbulentorhon/pjf@latest
 ```
-
-The binary is installed to `$GOPATH/bin` (usually `~/go/bin`). Make sure it's in your `PATH`.
 
 ### From source
 
@@ -34,7 +51,7 @@ The binary is installed to `$GOPATH/bin` (usually `~/go/bin`). Make sure it's in
 git clone https://github.com/halilbulentorhon/pjf.git
 cd pjf
 go build -o pjf .
-mv pjf /usr/local/bin/   # or anywhere in your PATH
+mv pjf /usr/local/bin/
 ```
 
 ### Uninstall
