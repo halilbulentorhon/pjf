@@ -20,6 +20,21 @@ var (
 				Bold(true).
 				Padding(0, 2)
 
+	hiddenItemStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")).
+			Italic(true).
+			Padding(0, 2)
+
+	hiddenSelectedItemStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("8")).
+				Italic(true).
+				Bold(true).
+				Padding(0, 2)
+
+	confirmStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("3")).
+			Bold(true)
+
 	pathStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8"))
 
