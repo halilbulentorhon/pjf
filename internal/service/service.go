@@ -302,6 +302,123 @@ func (s *ProjectService) RemoveDefaultIDE(projectType string) {
 	delete(s.Cfg.DefaultIDEs, projectType)
 }
 
+type GroupedSection struct {
+	Name      string
+	Collapsed bool
+	IsOther   bool
+	Projects  []project.Project
+}
+
+func (s *ProjectService) ProjectGroup(p project.Project) string {
+	for _, g := range s.Cfg.Groups {
+		for _, path := range g.Projects {
+			if path == p.Path {
+				return g.Name
+			}
+		}
+	}
+	return ""
+}
+
+func (s *ProjectService) SetProjectGroup(p project.Project, groupName string) {
+	s.RemoveProjectGroup(p)
+	for i, g := range s.Cfg.Groups {
+		if g.Name == groupName {
+			s.Cfg.Groups[i].Projects = append(s.Cfg.Groups[i].Projects, p.Path)
+			return
+		}
+	}
+}
+
+func (s *ProjectService) RemoveProjectGroup(p project.Project) {
+	for i, g := range s.Cfg.Groups {
+		for j, path := range g.Projects {
+			if path == p.Path {
+				s.Cfg.Groups[i].Projects = append(g.Projects[:j], g.Projects[j+1:]...)
+				return
+			}
+		}
+	}
+}
+
+func (s *ProjectService) AddGroup(name string) {
+	for _, g := range s.Cfg.Groups {
+		if g.Name == name {
+			return
+		}
+	}
+	s.Cfg.Groups = append(s.Cfg.Groups, config.GroupDef{Name: name})
+}
+
+func (s *ProjectService) RemoveGroup(name string) {
+	for i, g := range s.Cfg.Groups {
+		if g.Name == name {
+			s.Cfg.Groups = append(s.Cfg.Groups[:i], s.Cfg.Groups[i+1:]...)
+			return
+		}
+	}
+}
+
+func (s *ProjectService) RenameGroup(oldName, newName string) {
+	for i, g := range s.Cfg.Groups {
+		if g.Name == oldName {
+			s.Cfg.Groups[i].Name = newName
+			return
+		}
+	}
+}
+
+func (s *ProjectService) SetGroupCollapsed(name string, collapsed bool) {
+	for i, g := range s.Cfg.Groups {
+		if g.Name == name {
+			s.Cfg.Groups[i].Collapsed = collapsed
+			return
+		}
+	}
+}
+
+func (s *ProjectService) GroupedProjects(projects []project.Project) []GroupedSection {
+	assigned := make(map[string]bool)
+	for _, g := range s.Cfg.Groups {
+		for _, path := range g.Projects {
+			assigned[path] = true
+		}
+	}
+
+	grouped := make(map[string][]project.Project)
+	for _, p := range projects {
+		groupName := s.ProjectGroup(p)
+		if groupName != "" {
+			grouped[groupName] = append(grouped[groupName], p)
+		}
+	}
+
+	var sections []GroupedSection
+	for _, g := range s.Cfg.Groups {
+		sections = append(sections, GroupedSection{
+			Name:      g.Name,
+			Collapsed: g.Collapsed,
+			Projects:  grouped[g.Name],
+		})
+	}
+
+	var other []project.Project
+	for _, p := range projects {
+		if !assigned[p.Path] {
+			other = append(other, p)
+		}
+	}
+	if len(other) > 0 || len(s.Cfg.Groups) > 0 {
+		sections = append(sections, GroupedSection{
+			Name:     "Other",
+			IsOther:  true,
+			Projects: other,
+		})
+	}
+
+	return sections
+}
+
 func (s *ProjectService) SaveCommand(p project.Project, command string) {
 	for i, pc := range s.Cfg.ProjectCommands {
 		expanded := pc.Path

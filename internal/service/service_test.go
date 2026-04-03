@@ -474,3 +474,114 @@ func TestSetRemoveDefaultIDE(t *testing.T) {
 		t.Error("expected _default to remain")
 	}
 }
+
+func TestProjectGroup(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth: 5, CacheTTL: 24,
+		Groups: []config.GroupDef{
+			{Name: "Work", Projects: []string{"/tmp/a", "/tmp/b"}},
+			{Name: "Personal", Projects: []string{"/tmp/c"}},
+		},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+
+	if g := svc.ProjectGroup(project.Project{Path: "/tmp/a"}); g != "Work" {
+		t.Errorf("expected Work, got %s", g)
+	}
+	if g := svc.ProjectGroup(project.Project{Path: "/tmp/c"}); g != "Personal" {
+		t.Errorf("expected Personal, got %s", g)
+	}
+	if g := svc.ProjectGroup(project.Project{Path: "/tmp/x"}); g != "" {
+		t.Errorf("expected empty, got %s", g)
+	}
+}
+
+func TestSetProjectGroup(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth: 5, CacheTTL: 24,
+		Groups: []config.GroupDef{
+			{Name: "Work", Projects: []string{"/tmp/a"}},
+			{Name: "Personal", Projects: []string{}},
+		},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	p := project.Project{Path: "/tmp/a"}
+
+	svc.SetProjectGroup(p, "Personal")
+
+	if g := svc.ProjectGroup(p); g != "Personal" {
+		t.Errorf("expected Personal, got %s", g)
+	}
+	for _, proj := range cfg.Groups[0].Projects {
+		if proj == "/tmp/a" {
+			t.Error("expected /tmp/a removed from Work")
+		}
+	}
+}
+
+func TestRemoveProjectGroup(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth: 5, CacheTTL: 24,
+		Groups: []config.GroupDef{
+			{Name: "Work", Projects: []string{"/tmp/a"}},
+		},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.RemoveProjectGroup(project.Project{Path: "/tmp/a"})
+
+	if g := svc.ProjectGroup(project.Project{Path: "/tmp/a"}); g != "" {
+		t.Error("expected empty after remove")
+	}
+}
+
+func TestAddRemoveGroup(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+
+	svc.AddGroup("Work")
+	if len(cfg.Groups) != 1 || cfg.Groups[0].Name != "Work" {
+		t.Error("expected Work group")
+	}
+
+	svc.RemoveGroup("Work")
+	if len(cfg.Groups) != 0 {
+		t.Error("expected no groups")
+	}
+}
+
+func TestRenameGroup(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth: 5, CacheTTL: 24,
+		Groups: []config.GroupDef{{Name: "Old"}},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.RenameGroup("Old", "New")
+	if cfg.Groups[0].Name != "New" {
+		t.Errorf("expected New, got %s", cfg.Groups[0].Name)
+	}
+}
+
+func TestGroupedProjects(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth: 5, CacheTTL: 24,
+		Groups: []config.GroupDef{
+			{Name: "Work", Projects: []string{"/tmp/a"}},
+		},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	projects := []project.Project{
+		{Path: "/tmp/a", Name: "a"},
+		{Path: "/tmp/b", Name: "b"},
+	}
+
+	sections := svc.GroupedProjects(projects)
+	if len(sections) != 2 {
+		t.Fatalf("expected 2 sections, got %d", len(sections))
+	}
+	if sections[0].Name != "Work" || len(sections[0].Projects) != 1 {
+		t.Error("expected Work with 1 project")
+	}
+	if !sections[1].IsOther || len(sections[1].Projects) != 1 {
+		t.Error("expected Other with 1 project")
+	}
+}
