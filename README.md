@@ -35,7 +35,7 @@ Run `pjf`. On first launch, a wizard asks which directories to scan. After that,
 | `m` | Move to group |
 | `s` | Settings |
 | `r` | Rescan |
-| `h` | Hide project |
+| `h` | Hide/unhide project |
 | `ctrl+h` | Show/hide hidden projects |
 | `?` | Help |
 | `q` | Quit |

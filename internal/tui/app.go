@@ -286,9 +286,16 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.scanCmd()
 			case "h":
 				if p, ok := m.list.selected(); ok {
-					m.list.confirmingHide = true
-					m.list.confirmProject = p
-					m.status = fmt.Sprintf("Hide %q? (y/n)", p.Name)
+					if m.service.IsHidden(p) {
+						m.service.UnhideProject(p)
+						m.service.SaveConfig(m.configPath)
+						m.list.rebuildSections()
+						m.status = "Unhidden: " + p.Name
+					} else {
+						m.list.confirmingHide = true
+						m.list.confirmProject = p
+						m.status = fmt.Sprintf("Hide %q? (y/n)", p.Name)
+					}
 					return m, nil
 				}
 			case "ctrl+h":
