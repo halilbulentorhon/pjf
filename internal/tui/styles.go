@@ -41,6 +41,14 @@ var (
 	defaultMarkerStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("3"))
 
+	activeTabStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("12")).
+			Bold(true).
+			Underline(true)
+
+	inactiveTabStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("8"))
+
 	pathStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8"))
 

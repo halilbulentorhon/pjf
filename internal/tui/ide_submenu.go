@@ -21,6 +21,14 @@ type ideSubmenuModel struct {
 	defaultIDE string
 	cursor     int
 	svc        *service.ProjectService
+	pickMode   bool
+	PickedSlug string
+}
+
+func newIDEPickerModel(p project.Project, svc *service.ProjectService) ideSubmenuModel {
+	m := newIDESubmenuModel(p, svc)
+	m.pickMode = true
+	return m
 }
 
 func newIDESubmenuModel(p project.Project, svc *service.ProjectService) ideSubmenuModel {
@@ -60,6 +68,13 @@ func (m ideSubmenuModel) Update(msg tea.Msg) (ideSubmenuModel, tea.Cmd, ideSubme
 		case "enter":
 			if m.cursor < len(m.ides) {
 				selected := m.ides[m.cursor]
+				if m.pickMode {
+					m.PickedSlug = selected.Slug
+					return m, nil, ideSubmenuResult{
+						status: selected.Name,
+						action: "pick",
+					}
+				}
 				if err := m.svc.OpenIDE(m.project, selected); err != nil {
 					return m, nil, ideSubmenuResult{status: "Error: " + err.Error()}
 				}
@@ -106,7 +121,11 @@ func (m ideSubmenuModel) View() string {
 			}
 		}
 
-		s += "\n" + helpStyle.Render("1-9: select  enter: open  d: set default  esc: back")
+		if m.pickMode {
+			s += "\n" + helpStyle.Render("1-9: select  enter: pick  esc: cancel")
+		} else {
+			s += "\n" + helpStyle.Render("1-9: select  enter: open  d: set default  esc: back")
+		}
 		return s
 	}())
 }
