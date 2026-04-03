@@ -3,9 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-
-	"golang.org/x/term"
 
 	"github.com/halilbulentorhon/pjf/internal/config"
 	"github.com/halilbulentorhon/pjf/internal/ide"
@@ -56,14 +55,10 @@ func uninstall() {
 	}
 
 	fmt.Print("\nContinue? [y/N] ")
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		fmt.Println("\nCannot read input.")
-		return
-	}
+	exec.Command("stty", "-f", "/dev/tty", "cbreak", "min", "1").Run()
 	buf := make([]byte, 1)
 	os.Stdin.Read(buf)
-	term.Restore(int(os.Stdin.Fd()), oldState)
+	exec.Command("stty", "-f", "/dev/tty", "-cbreak").Run()
 	fmt.Printf("%c\n", buf[0])
 
 	if buf[0] != 'y' && buf[0] != 'Y' {

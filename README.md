@@ -18,15 +18,23 @@ pjf scans your filesystem for git repositories, presents them in a fuzzy-searcha
 
 ## Installation
 
-### From source
+### go install (recommended)
 
-Requires [Go 1.25+](https://go.dev/dl/).
+Requires [Go 1.22+](https://go.dev/dl/).
+
+```bash
+go install github.com/halilbulentorhon/pjf@latest
+```
+
+The binary is installed to `$GOPATH/bin` (usually `~/go/bin`). Make sure it's in your `PATH`.
+
+### From source
 
 ```bash
 git clone https://github.com/halilbulentorhon/pjf.git
 cd pjf
 go build -o pjf .
-sudo mv pjf /usr/local/bin/
+mv pjf /usr/local/bin/   # or anywhere in your PATH
 ```
 
 ### Uninstall
