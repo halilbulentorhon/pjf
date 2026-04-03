@@ -32,16 +32,16 @@ Run `pjf`. On first launch, a wizard asks which directories to scan. After that,
 | `enter` | Action menu |
 | `t` | Open in terminal |
 | `o` | Open in default IDE |
-| `m` | Move to group |
+| `c` | Run command |
+| `e` | Edit mode |
 | `s` | Settings |
 | `r` | Rescan |
-| `h` | Hide/unhide project |
-| `ctrl+h` | Show/hide hidden projects |
+| `←` / `→` | Collapse/expand groups |
 | `?` | Help |
 | `q` | Quit |
-| `←` / `→` | Collapse/expand groups |
-| `u` / `d` | Reorder groups |
 | `esc` | Search bar |
+
+**Edit mode** (`e`): `h` hide/unhide, `m` move to group, `d` delete, `v` toggle hidden, `w/s` reorder groups, `e/esc` exit.
 
 Search is focused by default — just type. `↓` to list, `esc` to clear. Menus: `1-9` to pick by number.
 

@@ -59,7 +59,8 @@ type Model struct {
 	actions    actionsModel
 	help       helpModel
 	ideSubmenu  ideSubmenuModel
-	cmdSubmenu  cmdSubmenuModel
+	cmdSubmenu       cmdSubmenuModel
+	cmdReturnState   appState
 	cmdInput    cmdInputModel
 	output          outputModel
 	globalSettings  globalSettingsModel
@@ -258,109 +259,94 @@ func (m *Model) updateWizard(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.list.confirmingHide {
+		if m.list.confirmingHide || m.list.confirmingDelete {
 			switch msg.String() {
 			case "y":
-				m.service.HideProject(m.list.confirmProject)
-				m.service.SaveConfig(m.configPath)
+				if m.list.confirmingHide {
+					m.service.HideProject(m.list.confirmProject)
+					m.service.SaveConfig(m.configPath)
+					m.list.rebuildSections()
+					m.status = "Hidden: " + m.list.confirmProject.Name
+				} else {
+					m.service.DeleteProject(m.list.confirmProject)
+					m.service.SaveConfig(m.configPath)
+					m.service.RemoveFromCache(m.list.confirmProject)
+					m.list.removeProject(m.list.confirmProject.Path)
+					m.status = "Deleted: " + m.list.confirmProject.Name
+				}
 				m.list.confirmingHide = false
-				m.list.rebuildSections()
-				m.status = "Hidden: " + m.list.confirmProject.Name
+				m.list.confirmingDelete = false
 			default:
 				m.list.confirmingHide = false
+				m.list.confirmingDelete = false
 				m.status = ""
 			}
 			return m, nil
 		}
 		if !m.list.searchFocused {
-			switch msg.String() {
-			case "q":
-				return m, tea.Quit
-			case "?":
-				m.prevState = stateList
-				m.state = stateHelp
-				return m, nil
-			case "r":
-				m.status = "Rescanning..."
-				m.state = stateScanning
-				return m, m.scanCmd()
-			case "h":
-				if p, ok := m.list.selected(); ok {
-					if m.service.IsHidden(p) {
-						m.service.UnhideProject(p)
-						m.service.SaveConfig(m.configPath)
-						m.list.rebuildSections()
-						m.status = "Unhidden: " + p.Name
-					} else {
-						m.list.confirmingHide = true
-						m.list.confirmProject = p
-						m.status = fmt.Sprintf("Hide %q? (y/n)", p.Name)
-					}
-					return m, nil
-				}
-			case "ctrl+h":
-				m.list.showHidden = !m.list.showHidden
-				m.list.rebuildSections()
-				if m.list.showHidden {
-					hasHidden := false
-					for _, p := range m.list.projects {
-						if m.service.IsHidden(p) {
-							hasHidden = true
-							break
-						}
-					}
-					if !hasHidden {
-						m.status = "No hidden projects"
-						m.list.showHidden = false
-					} else {
-						m.status = "Showing hidden projects"
-					}
-				} else {
+			if m.list.editMode {
+				switch msg.String() {
+				case "e", "esc":
+					m.list.editMode = false
 					m.status = ""
-				}
-				return m, nil
-			case "t":
-				if p, ok := m.list.selected(); ok {
-					if err := m.service.OpenTerminal(p); err != nil {
-						m.status = "Error: " + err.Error()
-					} else {
-						m.status = "Open in Terminal — done"
-					}
 					return m, nil
-				}
-			case "s":
-				m.globalSettings = newGlobalSettingsModel(m.service)
-				m.state = stateGlobalSettings
-				return m, nil
-			case "o":
-				if p, ok := m.list.selected(); ok {
-					resolved, ok := m.service.ResolveIDE(p)
-					if !ok {
-						m.status = "No IDE configured"
+				case "h":
+					if p, ok := m.list.selected(); ok {
+						if m.service.IsHidden(p) {
+							m.service.UnhideProject(p)
+							m.service.SaveConfig(m.configPath)
+							m.list.rebuildSections()
+							m.status = "Unhidden: " + p.Name
+						} else {
+							m.list.confirmingHide = true
+							m.list.confirmProject = p
+							m.status = fmt.Sprintf("Hide %q? (y/n)", p.Name)
+						}
 						return m, nil
 					}
-					if err := m.service.OpenIDE(p, resolved); err != nil {
-						m.status = "Error: " + err.Error()
+				case "v":
+					m.list.showHidden = !m.list.showHidden
+					m.list.rebuildSections()
+					if m.list.showHidden {
+						hasHidden := false
+						for _, p := range m.list.projects {
+							if m.service.IsHidden(p) {
+								hasHidden = true
+								break
+							}
+						}
+						if !hasHidden {
+							m.status = "No hidden projects"
+							m.list.showHidden = false
+						} else {
+							m.status = "Showing hidden projects"
+						}
 					} else {
-						m.status = "Open in " + resolved.Name + " — done"
+						m.status = ""
 					}
 					return m, nil
-				}
-			case "m":
-				if p, ok := m.list.selected(); ok {
-					m.groupSubmenu = newGroupSubmenuModel(p, m.service)
-					m.state = stateGroupSubmenu
-					return m, nil
-				}
-			case "u":
-				if m.list.cursor >= 0 && m.list.cursor < len(m.list.flatItems) {
-					item := m.list.flatItems[m.list.cursor]
-					if item.isHeader && item.groupIndex >= 0 {
-						m.service.MoveGroupUp(item.groupName)
-						m.service.SaveConfig(m.configPath)
-						m.list.rebuildSections()
-						if m.list.cursor > 0 {
-							for i := m.list.cursor - 1; i >= 0; i-- {
+				case "m":
+					if p, ok := m.list.selected(); ok {
+						m.groupSubmenu = newGroupSubmenuModel(p, m.service)
+						m.state = stateGroupSubmenu
+						m.list.editMode = false
+						return m, nil
+					}
+				case "d":
+					if p, ok := m.list.selected(); ok {
+						m.list.confirmingDelete = true
+						m.list.confirmProject = p
+						m.status = fmt.Sprintf("Delete %q? This cannot be undone. (y/n)", p.Name)
+						return m, nil
+					}
+				case "w":
+					if m.list.cursor >= 0 && m.list.cursor < len(m.list.flatItems) {
+						item := m.list.flatItems[m.list.cursor]
+						if item.isHeader && item.groupIndex >= 0 {
+							m.service.MoveGroupUp(item.groupName)
+							m.service.SaveConfig(m.configPath)
+							m.list.rebuildSections()
+							for i := 0; i < len(m.list.flatItems); i++ {
 								if m.list.flatItems[i].isHeader && m.list.flatItems[i].groupName == item.groupName {
 									m.list.cursor = i
 									break
@@ -368,30 +354,81 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						}
 					}
-				}
-				return m, nil
-			case "d":
-				if m.list.cursor >= 0 && m.list.cursor < len(m.list.flatItems) {
-					item := m.list.flatItems[m.list.cursor]
-					if item.isHeader && item.groupIndex >= 0 {
-						m.service.MoveGroupDown(item.groupName)
-						m.service.SaveConfig(m.configPath)
-						m.list.rebuildSections()
-						for i := 0; i < len(m.list.flatItems); i++ {
-							if m.list.flatItems[i].isHeader && m.list.flatItems[i].groupName == item.groupName {
-								m.list.cursor = i
-								break
+					return m, nil
+				case "s":
+					if m.list.cursor >= 0 && m.list.cursor < len(m.list.flatItems) {
+						item := m.list.flatItems[m.list.cursor]
+						if item.isHeader && item.groupIndex >= 0 {
+							m.service.MoveGroupDown(item.groupName)
+							m.service.SaveConfig(m.configPath)
+							m.list.rebuildSections()
+							for i := 0; i < len(m.list.flatItems); i++ {
+								if m.list.flatItems[i].isHeader && m.list.flatItems[i].groupName == item.groupName {
+									m.list.cursor = i
+									break
+								}
 							}
 						}
 					}
-				}
-				return m, nil
-			case "enter":
-				if p, ok := m.list.selected(); ok {
-					hidden := m.service.IsHidden(p)
-					m.actions = newActionsModelForProject(p, m.service, hidden)
-					m.state = stateActions
 					return m, nil
+				}
+			} else {
+				switch msg.String() {
+				case "q":
+					return m, tea.Quit
+				case "?":
+					m.prevState = stateList
+					m.state = stateHelp
+					return m, nil
+				case "r":
+					m.status = "Rescanning..."
+					m.state = stateScanning
+					return m, m.scanCmd()
+				case "t":
+					if p, ok := m.list.selected(); ok {
+						if err := m.service.OpenTerminal(p); err != nil {
+							m.status = "Error: " + err.Error()
+						} else {
+							m.status = "Open in Terminal — done"
+						}
+						return m, nil
+					}
+				case "s":
+					m.globalSettings = newGlobalSettingsModel(m.service)
+					m.state = stateGlobalSettings
+					return m, nil
+				case "o":
+					if p, ok := m.list.selected(); ok {
+						resolved, ok := m.service.ResolveIDE(p)
+						if !ok {
+							m.status = "No IDE configured"
+							return m, nil
+						}
+						if err := m.service.OpenIDE(p, resolved); err != nil {
+							m.status = "Error: " + err.Error()
+						} else {
+							m.status = "Open in " + resolved.Name + " — done"
+						}
+						return m, nil
+					}
+				case "c":
+					if p, ok := m.list.selected(); ok {
+						m.cmdSubmenu = newCmdSubmenuModel(p, m.service)
+						m.cmdReturnState = stateList
+						m.state = stateCommandSubmenu
+						return m, nil
+					}
+				case "e":
+					m.list.editMode = true
+					m.status = "Edit mode"
+					return m, nil
+				case "enter":
+					if p, ok := m.list.selected(); ok {
+						hidden := m.service.IsHidden(p)
+						m.actions = newActionsModelForProject(p, m.service, hidden)
+						m.state = stateActions
+						return m, nil
+					}
 				}
 			}
 		}
@@ -422,6 +459,7 @@ func (m *Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if result.action == "cmd-submenu" {
 		m.cmdSubmenu = newCmdSubmenuModel(m.actions.project, m.service)
+		m.cmdReturnState = stateActions
 		m.state = stateCommandSubmenu
 		return m, cmd
 	}
@@ -495,7 +533,7 @@ func (m *Model) updateCommandSubmenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "esc" {
-			m.state = stateActions
+			m.state = m.cmdReturnState
 			return m, nil
 		}
 	}
@@ -608,7 +646,7 @@ func (m *Model) updateOutput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "esc" {
-			m.state = stateActions
+			m.state = stateCommandSubmenu
 			return m, nil
 		}
 	}

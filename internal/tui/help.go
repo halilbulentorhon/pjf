@@ -12,15 +12,20 @@ func (m helpModel) View(width, height int) string {
 		"  enter        Action menu\n" +
 		"  t            Open in terminal\n" +
 		"  o            Open in IDE\n" +
+		"  c            Run command\n" +
+		"  e            Edit mode\n" +
 		"  s            Settings\n" +
-		"  h            Hide/unhide project\n" +
-		"  ctrl+h       Show/hide hidden projects\n" +
 		"  r            Rescan projects\n" +
-		"  m            Move to group\n" +
 		"  ←/→          Collapse/expand groups\n" +
-		"  u/d          Reorder groups\n" +
 		"  ?            Toggle this help\n" +
 		"  q            Quit\n\n" +
+		titleStyle.Render("Edit Mode") + "\n\n" +
+		"  h            Hide/unhide project\n" +
+		"  m            Move to group\n" +
+		"  d            Delete project\n" +
+		"  v            Show/hide hidden\n" +
+		"  w/s          Reorder groups\n" +
+		"  e/esc        Exit edit mode\n\n" +
 		"  Search: ↑ at top enters search, ↓/esc returns to list\n\n" +
 		helpStyle.Render("esc or ?: close")
 

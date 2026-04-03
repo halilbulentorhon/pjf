@@ -34,8 +34,10 @@ type listModel struct {
 	showHidden     bool
 	searchFocused  bool
 	otherCollapsed bool
-	confirmingHide bool
-	confirmProject project.Project
+	editMode         bool
+	confirmingHide   bool
+	confirmingDelete bool
+	confirmProject   project.Project
 	isHidden       func(project.Project) bool
 	resolveIDEName func(project.Project) string
 	grouper        func([]project.Project) []service.GroupedSection
@@ -371,24 +373,36 @@ func (m listModel) View(width, height int, status string) string {
 	if m.searchFocused {
 		hint = "esc: clear  ↓: back to list"
 	} else {
-		onHeader := false
-		if m.cursor >= 0 && m.cursor < len(m.flatItems) {
-			onHeader = m.flatItems[m.cursor].isHeader
-		}
-		if onHeader {
-			hint = "←/→: collapse/expand  u/d: reorder  r: refresh  s: settings  ?: help  q: quit"
-		} else {
-			ideName := "IDE"
-			if p, ok := m.selected(); ok {
-				if name := m.resolveIDEName(p); name != "" {
-					ideName = name
+		if m.editMode {
+			onHeader := false
+			if m.cursor >= 0 && m.cursor < len(m.flatItems) {
+				onHeader = m.flatItems[m.cursor].isHeader
+			}
+			if onHeader {
+				hint = "w/s: reorder  ←/→: collapse/expand  v: hidden  e/esc: done"
+			} else {
+				hAction := "h: hide"
+				if p, ok := m.selected(); ok && m.isHidden(p) {
+					hAction = "h: unhide"
 				}
+				hint = hAction + "  m: move  d: delete  v: hidden  e/esc: done"
 			}
-			hAction := "h: hide"
-			if p, ok := m.selected(); ok && m.isHidden(p) {
-				hAction = "h: unhide"
+		} else {
+			onHeader := false
+			if m.cursor >= 0 && m.cursor < len(m.flatItems) {
+				onHeader = m.flatItems[m.cursor].isHeader
 			}
-			hint = "enter: actions  t: terminal  o: " + ideName + "  m: move  " + hAction + "  r: refresh  ?: help  q: quit"
+			if onHeader {
+				hint = "←/→: collapse/expand  e: edit  s: settings  r: refresh  ?: help  q: quit"
+			} else {
+				ideName := "IDE"
+				if p, ok := m.selected(); ok {
+					if name := m.resolveIDEName(p); name != "" {
+						ideName = name
+					}
+				}
+				hint = "enter: actions  t: terminal  o: " + ideName + "  c: commands  e: edit  s: settings  r: refresh  ?: help  q: quit"
+			}
 		}
 	}
 	b.WriteString(helpStyle.Render(hint))

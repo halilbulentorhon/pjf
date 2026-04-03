@@ -25,7 +25,7 @@ func newOutputModel(title string, height int) outputModel {
 func (m *outputModel) setOutput(output string) {
 	m.lines = strings.Split(output, "\n")
 	m.running = false
-	m.scroll = 0
+	m.scroll = m.maxScroll()
 }
 
 func (m outputModel) maxScroll() int {
