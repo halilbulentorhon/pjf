@@ -36,6 +36,7 @@ func newActionsModel() actionsModel {
 
 func newActionsModelForProject(p project.Project, svc *service.ProjectService, hidden bool) actionsModel {
 	items := []actionItem{
+		{label: "Open in IDE", action: "ide-submenu"},
 		{label: "Open in Terminal", action: "open", run: func() error { return svc.OpenTerminal(p) }},
 		{label: "Copy Path", action: "copy", run: func() error { return svc.CopyPath(p) }},
 	}
@@ -59,11 +60,6 @@ func newActionsModelForProject(p project.Project, svc *service.ProjectService, h
 			},
 		})
 	}
-
-	items = append(items, actionItem{
-		label:  "Open in IDE",
-		action: "ide-submenu",
-	})
 
 	items = append(items, actionItem{
 		label:  "Delete Project",

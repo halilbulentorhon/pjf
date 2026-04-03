@@ -18,7 +18,6 @@ type ideSubmenuModel struct {
 	ides       []ide.IDE
 	defaultIDE string
 	cursor     int
-	lastIDEIdx int
 	svc        *service.ProjectService
 }
 
@@ -36,10 +35,6 @@ func newIDESubmenuModel(p project.Project, svc *service.ProjectService) ideSubme
 	}
 }
 
-func (m ideSubmenuModel) totalItems() int {
-	return len(m.ides) + 1
-}
-
 func (m ideSubmenuModel) Update(msg tea.Msg) (ideSubmenuModel, tea.Cmd, ideSubmenuResult) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -49,7 +44,7 @@ func (m ideSubmenuModel) Update(msg tea.Msg) (ideSubmenuModel, tea.Cmd, ideSubme
 				m.cursor--
 			}
 		case "down", "j":
-			if m.cursor < m.totalItems()-1 {
+			if m.cursor < len(m.ides)-1 {
 				m.cursor++
 			}
 		case "enter":
@@ -63,18 +58,17 @@ func (m ideSubmenuModel) Update(msg tea.Msg) (ideSubmenuModel, tea.Cmd, ideSubme
 					action: "open-ide",
 				}
 			}
-			if m.cursor == len(m.ides) && len(m.ides) > 0 {
-				selected := m.ides[m.lastIDEIdx]
+		case "d":
+			if m.cursor < len(m.ides) {
+				selected := m.ides[m.cursor]
 				m.svc.SetProjectIDE(m.project, selected.Slug)
+				m.defaultIDE = selected.Slug
 				return m, nil, ideSubmenuResult{
 					status: "Default IDE set: " + selected.Name,
 					action: "set-default-ide",
 				}
 			}
 		}
-	}
-	if m.cursor < len(m.ides) {
-		m.lastIDEIdx = m.cursor
 	}
 	return m, nil, ideSubmenuResult{}
 }
@@ -101,16 +95,7 @@ func (m ideSubmenuModel) View() string {
 			}
 		}
 
-		s += separatorStyle.Render("  ──────────────") + "\n"
-
-		setDefaultLabel := "Set as default for this project"
-		if m.cursor == len(m.ides) {
-			s += selectedItemStyle.Render("▸ "+setDefaultLabel) + "\n"
-		} else {
-			s += itemStyle.Render("  "+setDefaultLabel) + "\n"
-		}
-
-		s += "\n" + helpStyle.Render("enter: select  esc: back")
+		s += "\n" + helpStyle.Render("enter: open  d: set default  esc: back")
 		return s
 	}())
 }

@@ -14,26 +14,28 @@ import (
 )
 
 type listModel struct {
-	search        textinput.Model
-	projects      []project.Project
-	filtered      []project.Project
-	cursor        int
-	width         int
-	height        int
-	showHidden    bool
-	searchFocused bool
-	isHidden      func(project.Project) bool
+	search         textinput.Model
+	projects       []project.Project
+	filtered       []project.Project
+	cursor         int
+	width          int
+	height         int
+	showHidden     bool
+	searchFocused  bool
+	isHidden       func(project.Project) bool
+	resolveIDEName func(project.Project) string
 }
 
-func newListModel(isHidden func(project.Project) bool) listModel {
+func newListModel(isHidden func(project.Project) bool, resolveIDEName func(project.Project) string) listModel {
 	ti := textinput.New()
 	ti.Placeholder = "search..."
 	ti.Prompt = "> "
 	ti.Focus()
 	return listModel{
-		search:        ti,
-		searchFocused: true,
-		isHidden:      isHidden,
+		search:         ti,
+		searchFocused:  true,
+		isHidden:       isHidden,
+		resolveIDEName: resolveIDEName,
 	}
 }
 
@@ -94,6 +96,10 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 				m.cursor++
 			}
 			return m, nil
+		case "esc":
+			m.searchFocused = true
+			m.search.Focus()
+			return m, textinput.Blink
 		}
 	}
 	return m, nil
@@ -194,10 +200,18 @@ func (m listModel) View(width, height int, status string) string {
 	var hint string
 	if m.searchFocused {
 		hint = "esc: clear  ↓: back to list"
-	} else if m.showHidden {
-		hint = "enter: actions  t: terminal  o: IDE  r: refresh  h: hide hidden  ?: help  q: quit"
 	} else {
-		hint = "enter: actions  t: terminal  o: IDE  r: refresh  h: hidden  ?: help  q: quit"
+		ideName := "IDE"
+		if p, ok := m.selected(); ok {
+			if name := m.resolveIDEName(p); name != "" {
+				ideName = name
+			}
+		}
+		if m.showHidden {
+			hint = "enter: actions  t: terminal  o: " + ideName + "  r: refresh  h: hide hidden  ?: help  q: quit"
+		} else {
+			hint = "enter: actions  t: terminal  o: " + ideName + "  r: refresh  h: hidden  ?: help  q: quit"
+		}
 	}
 	b.WriteString(helpStyle.Render(hint))
 

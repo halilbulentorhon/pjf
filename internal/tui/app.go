@@ -4,6 +4,7 @@ import (
 	"context"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/halilbulentorhon/pjf/internal/ide"
 	"github.com/halilbulentorhon/pjf/internal/project"
 	"github.com/halilbulentorhon/pjf/internal/service"
 )
@@ -54,7 +55,12 @@ func New(svc *service.ProjectService, configPath string, isFirstRun bool) Model 
 		service:    svc,
 		configPath: configPath,
 		wizard:     newWizardModel(),
-		list:       newListModel(svc.IsHidden),
+		list: newListModel(svc.IsHidden, func(p project.Project) string {
+			if resolved, ok := svc.ResolveIDE(p); ok {
+				return resolved.Name
+			}
+			return ""
+		}),
 		actions:    newActionsModel(),
 		help:       newHelpModel(),
 	}
@@ -91,6 +97,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "Scan error: " + msg.err.Error()
 			return m, nil
 		}
+		m.service.SetDetectedIDEs(ide.DetectAll())
 		m.list.setProjects(msg.projects)
 		m.state = stateList
 		m.status = ""
@@ -331,7 +338,6 @@ func (m *Model) updateIDESubmenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch result.action {
 		case "set-default-ide":
 			m.service.SaveConfig(m.configPath)
-			m.state = stateList
 		default:
 			m.state = stateList
 		}
