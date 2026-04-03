@@ -8,6 +8,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/halilbulentorhon/pjf/internal/config"
+	"github.com/halilbulentorhon/pjf/internal/ide"
 	"github.com/halilbulentorhon/pjf/internal/scanner"
 	"github.com/halilbulentorhon/pjf/internal/service"
 	"github.com/halilbulentorhon/pjf/internal/tui"
@@ -31,6 +32,7 @@ func main() {
 	sc := &scanner.FileScanner{}
 	cache := &scanner.JSONCacheStore{Path: cachePath}
 	svc := service.New(cfg, sc, cache)
+	svc.SetDetectedIDEs(ide.DetectAll())
 
 	if err := tui.Run(svc, configPath, isFirstRun); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

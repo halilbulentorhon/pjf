@@ -35,6 +35,12 @@ var (
 			Foreground(lipgloss.Color("3")).
 			Bold(true)
 
+	separatorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8"))
+
+	defaultMarkerStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("3"))
+
 	pathStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8"))
 

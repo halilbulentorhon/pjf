@@ -61,6 +61,11 @@ func newActionsModelForProject(p project.Project, svc *service.ProjectService, h
 	}
 
 	items = append(items, actionItem{
+		label:  "Open in IDE",
+		action: "ide-submenu",
+	})
+
+	items = append(items, actionItem{
 		label:  "Delete Project",
 		action: "delete",
 		run: func() error {
@@ -105,6 +110,8 @@ func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, actionResult) 
 			if m.cursor < len(m.items) {
 				item := m.items[m.cursor]
 				switch item.action {
+				case "ide-submenu":
+					return m, nil, actionResult{action: "ide-submenu"}
 				case "hide":
 					m.confirming = true
 					m.confirmLabel = item.label

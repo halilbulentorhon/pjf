@@ -16,6 +16,7 @@ const (
 	stateList
 	stateActions
 	stateHelp
+	stateIDESubmenu
 )
 
 type scanCompleteMsg struct {
@@ -42,6 +43,7 @@ type Model struct {
 	list       listModel
 	actions    actionsModel
 	help       helpModel
+	ideSubmenu ideSubmenuModel
 	status     string
 	width      int
 	height     int
@@ -124,6 +126,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateActions(msg)
 	case stateHelp:
 		return m.updateHelp(msg)
+	case stateIDESubmenu:
+		return m.updateIDESubmenu(msg)
 	}
 	return m, nil
 }
@@ -140,6 +144,8 @@ func (m Model) View() string {
 		return m.actions.View()
 	case stateHelp:
 		return m.help.View(m.width, m.height)
+	case stateIDESubmenu:
+		return m.ideSubmenu.View()
 	}
 	return ""
 }
@@ -232,6 +238,20 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				}
+			case "o":
+				if p, ok := m.list.selected(); ok {
+					resolved, ok := m.service.ResolveIDE(p)
+					if !ok {
+						m.status = "No IDE configured"
+						return m, nil
+					}
+					if err := m.service.OpenIDE(p, resolved); err != nil {
+						m.status = "Error: " + err.Error()
+					} else {
+						m.status = "Open in " + resolved.Name + " — done"
+					}
+					return m, nil
+				}
 			case "enter":
 				if p, ok := m.list.selected(); ok {
 					hidden := m.service.IsHidden(p)
@@ -257,6 +277,11 @@ func (m *Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	act, cmd, result := m.actions.Update(msg)
 	m.actions = act
+	if result.action == "ide-submenu" {
+		m.ideSubmenu = newIDESubmenuModel(m.actions.project, m.service)
+		m.state = stateIDESubmenu
+		return m, cmd
+	}
 	if result.status != "" {
 		m.status = result.status
 		switch result.action {
@@ -289,6 +314,29 @@ func (m *Model) updateHelp(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) updateIDESubmenu(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "esc" {
+			m.state = stateActions
+			return m, nil
+		}
+	}
+	sub, cmd, result := m.ideSubmenu.Update(msg)
+	m.ideSubmenu = sub
+	if result.status != "" {
+		m.status = result.status
+		switch result.action {
+		case "set-default-ide":
+			m.service.SaveConfig(m.configPath)
+			m.state = stateList
+		default:
+			m.state = stateList
+		}
+	}
+	return m, cmd
 }
 
 func Run(svc *service.ProjectService, configPath string, isFirstRun bool) error {
