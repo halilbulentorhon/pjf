@@ -28,6 +28,7 @@ type listModel struct {
 	projects       []project.Project
 	flatItems      []listItem
 	cursor         int
+	scrollOffset   int
 	width          int
 	height         int
 	showHidden     bool
@@ -128,6 +129,22 @@ func (m *listModel) rebuildSections() {
 	m.clampCursor()
 }
 
+func (m *listModel) updateScroll(height int) {
+	maxVisible := height - 7
+	if maxVisible < 1 {
+		maxVisible = 10
+	}
+	if m.cursor >= m.scrollOffset+maxVisible {
+		m.scrollOffset = m.cursor - maxVisible + 1
+	}
+	if m.cursor < m.scrollOffset {
+		m.scrollOffset = m.cursor
+	}
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
+}
+
 func (m *listModel) clampCursor() {
 	if m.cursor >= len(m.flatItems) {
 		m.cursor = len(m.flatItems) - 1
@@ -185,6 +202,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd, bool) {
 		case "up":
 			if m.cursor > 0 {
 				m.cursor--
+				m.updateScroll(m.height)
 			} else {
 				m.searchFocused = true
 				m.search.Focus()
@@ -194,6 +212,7 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd, bool) {
 		case "down":
 			if m.cursor < len(m.flatItems)-1 {
 				m.cursor++
+				m.updateScroll(m.height)
 			}
 			return m, nil, false
 		case "esc":
@@ -252,10 +271,17 @@ func (m listModel) View(width, height int, status string) string {
 
 	home, _ := os.UserHomeDir()
 
-	start := 0
-	if m.cursor >= maxVisible {
-		start = m.cursor - maxVisible + 1
+	scroll := m.scrollOffset
+	if m.cursor >= scroll+maxVisible {
+		scroll = m.cursor - maxVisible + 1
 	}
+	if m.cursor < scroll {
+		scroll = m.cursor
+	}
+	if scroll < 0 {
+		scroll = 0
+	}
+	start := scroll
 	end := start + maxVisible
 	if end > len(m.flatItems) {
 		end = len(m.flatItems)
@@ -286,10 +312,30 @@ func (m listModel) View(width, height int, status string) string {
 		branch := p.GitBranch
 		hidden := m.isHidden(p)
 
-		nameCol := lipgloss.NewStyle().Width(20).Render(name)
-		pathCol := pathStyle.Width(30).Render(path)
-		typeCol := typeStyle.Width(8).Render(pType)
-		branchCol := branchStyle.Render(branch)
+		availWidth := width - 6
+		if availWidth < 40 {
+			availWidth = 40
+		}
+		nameW := availWidth * 25 / 100
+		pathW := availWidth * 40 / 100
+		typeW := 8
+		branchW := availWidth - nameW - pathW - typeW - 3
+
+		if branchW < 5 {
+			branchW = 5
+		}
+
+		if len(name) > nameW {
+			name = name[:nameW-1] + "~"
+		}
+		if len(path) > pathW {
+			path = "~" + path[len(path)-pathW+1:]
+		}
+
+		nameCol := lipgloss.NewStyle().Width(nameW).Render(name)
+		pathCol := pathStyle.Width(pathW).Render(path)
+		typeCol := typeStyle.Width(typeW).Render(pType)
+		branchCol := branchStyle.Width(branchW).Render(branch)
 
 		row := fmt.Sprintf("%s %s %s %s", nameCol, pathCol, typeCol, branchCol)
 

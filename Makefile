@@ -7,4 +7,10 @@ uninstall: build
 build:
 	go build -o pjf .
 
-.PHONY: run uninstall build
+test-repos:
+	./scripts/create-test-repos.sh
+
+clean-repos:
+	./scripts/cleanup-test-repos.sh
+
+.PHONY: run uninstall build test-repos clean-repos
