@@ -220,8 +220,17 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd, bool) {
 		case "right":
 			if m.cursor >= 0 && m.cursor < len(m.flatItems) {
 				item := m.flatItems[m.cursor]
-				if item.isHeader && item.collapsed {
-					return m, nil, true
+				if item.isHeader {
+					if item.collapsed {
+						return m, nil, true
+					}
+					return m, nil, false
+				}
+				for i := m.cursor + 1; i < len(m.flatItems); i++ {
+					if m.flatItems[i].isHeader {
+						m.cursor = i
+						break
+					}
 				}
 			}
 			return m, nil, false
@@ -314,16 +323,20 @@ func (m listModel) View(width, height int, status string) string {
 	if m.searchFocused {
 		hint = "esc: clear  ↓: back to list"
 	} else {
-		ideName := "IDE"
-		if p, ok := m.selected(); ok {
-			if name := m.resolveIDEName(p); name != "" {
-				ideName = name
-			}
+		onHeader := false
+		if m.cursor >= 0 && m.cursor < len(m.flatItems) {
+			onHeader = m.flatItems[m.cursor].isHeader
 		}
-		if m.showHidden {
-			hint = "enter: actions  t: terminal  o: " + ideName + "  r: refresh  h: hide hidden  ←/→: collapse  s: settings  q: quit"
+		if onHeader {
+			hint = "←/→: collapse/expand  u/d: reorder  r: refresh  s: settings  ?: help  q: quit"
 		} else {
-			hint = "enter: actions  t: terminal  o: " + ideName + "  r: refresh  h: hidden  ←/→: collapse  s: settings  q: quit"
+			ideName := "IDE"
+			if p, ok := m.selected(); ok {
+				if name := m.resolveIDEName(p); name != "" {
+					ideName = name
+				}
+			}
+			hint = "enter: actions  t: terminal  o: " + ideName + "  m: move  r: refresh  ?: help  q: quit"
 		}
 	}
 	b.WriteString(helpStyle.Render(hint))

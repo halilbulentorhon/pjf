@@ -15,7 +15,9 @@ func (m helpModel) View(width, height int) string {
 		"  s            Settings\n" +
 		"  h            Toggle hidden projects\n" +
 		"  r            Rescan projects\n" +
+		"  m            Move to group\n" +
 		"  ←/→          Collapse/expand groups\n" +
+		"  u/d          Reorder groups\n" +
 		"  ?            Toggle this help\n" +
 		"  q            Quit\n\n" +
 		"  Search: ↑ at top enters search, ↓/esc returns to list\n\n" +

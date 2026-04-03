@@ -377,6 +377,24 @@ func (s *ProjectService) SetGroupCollapsed(name string, collapsed bool) {
 	}
 }
 
+func (s *ProjectService) MoveGroupUp(name string) {
+	for i, g := range s.Cfg.Groups {
+		if g.Name == name && i > 0 {
+			s.Cfg.Groups[i], s.Cfg.Groups[i-1] = s.Cfg.Groups[i-1], s.Cfg.Groups[i]
+			return
+		}
+	}
+}
+
+func (s *ProjectService) MoveGroupDown(name string) {
+	for i, g := range s.Cfg.Groups {
+		if g.Name == name && i < len(s.Cfg.Groups)-1 {
+			s.Cfg.Groups[i], s.Cfg.Groups[i+1] = s.Cfg.Groups[i+1], s.Cfg.Groups[i]
+			return
+		}
+	}
+}
+
 func (s *ProjectService) GroupedProjects(projects []project.Project) []GroupedSection {
 	assigned := make(map[string]bool)
 	for _, g := range s.Cfg.Groups {

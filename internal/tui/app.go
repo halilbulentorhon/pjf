@@ -317,6 +317,46 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				}
+			case "m":
+				if p, ok := m.list.selected(); ok {
+					m.groupSubmenu = newGroupSubmenuModel(p, m.service)
+					m.state = stateGroupSubmenu
+					return m, nil
+				}
+			case "u":
+				if m.list.cursor >= 0 && m.list.cursor < len(m.list.flatItems) {
+					item := m.list.flatItems[m.list.cursor]
+					if item.isHeader && item.groupIndex >= 0 {
+						m.service.MoveGroupUp(item.groupName)
+						m.service.SaveConfig(m.configPath)
+						m.list.rebuildSections()
+						if m.list.cursor > 0 {
+							for i := m.list.cursor - 1; i >= 0; i-- {
+								if m.list.flatItems[i].isHeader && m.list.flatItems[i].groupName == item.groupName {
+									m.list.cursor = i
+									break
+								}
+							}
+						}
+					}
+				}
+				return m, nil
+			case "d":
+				if m.list.cursor >= 0 && m.list.cursor < len(m.list.flatItems) {
+					item := m.list.flatItems[m.list.cursor]
+					if item.isHeader && item.groupIndex >= 0 {
+						m.service.MoveGroupDown(item.groupName)
+						m.service.SaveConfig(m.configPath)
+						m.list.rebuildSections()
+						for i := 0; i < len(m.list.flatItems); i++ {
+							if m.list.flatItems[i].isHeader && m.list.flatItems[i].groupName == item.groupName {
+								m.list.cursor = i
+								break
+							}
+						}
+					}
+				}
+				return m, nil
 			case "enter":
 				if p, ok := m.list.selected(); ok {
 					hidden := m.service.IsHidden(p)
