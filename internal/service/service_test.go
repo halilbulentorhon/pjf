@@ -369,3 +369,108 @@ func TestRunCommand(t *testing.T) {
 		t.Errorf("expected 'hello\\n', got %q", output)
 	}
 }
+
+func TestRemoveProjectIDE(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth:    5,
+		CacheTTL:    24,
+		ProjectIDEs: map[string]string{"/tmp/a": "code", "/tmp/b": "goland"},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.RemoveProjectIDE(project.Project{Path: "/tmp/a"})
+	if _, ok := svc.Cfg.ProjectIDEs["/tmp/a"]; ok {
+		t.Error("expected /tmp/a to be removed")
+	}
+	if svc.Cfg.ProjectIDEs["/tmp/b"] != "goland" {
+		t.Error("expected /tmp/b to remain")
+	}
+}
+
+func TestRemoveSavedCommand(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth: 5,
+		CacheTTL: 24,
+		ProjectCommands: []config.ProjectCommandSet{
+			{Path: "/tmp/a", Commands: []config.CommandDef{
+				{Name: "test", Command: "go test"},
+				{Name: "build", Command: "go build"},
+			}},
+		},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.RemoveSavedCommand(project.Project{Path: "/tmp/a"}, 0)
+	cmds := svc.Cfg.ProjectCommands[0].Commands
+	if len(cmds) != 1 || cmds[0].Name != "build" {
+		t.Errorf("expected only build remaining, got %v", cmds)
+	}
+}
+
+func TestAddRemoveGlobalCommand(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.AddGlobalCommand("Git Status", "git status")
+	svc.AddGlobalCommand("Git Pull", "git pull")
+	if len(svc.Cfg.GlobalCommands) != 2 {
+		t.Fatalf("expected 2 commands, got %d", len(svc.Cfg.GlobalCommands))
+	}
+	svc.RemoveGlobalCommand(0)
+	if len(svc.Cfg.GlobalCommands) != 1 || svc.Cfg.GlobalCommands[0].Name != "Git Pull" {
+		t.Error("expected Git Pull remaining")
+	}
+}
+
+func TestAddRemoveScanDir(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24, ScanDirs: []string{"/a"}}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.AddScanDir("/b")
+	if len(svc.Cfg.ScanDirs) != 2 {
+		t.Fatal("expected 2 scan dirs")
+	}
+	svc.RemoveScanDir(0)
+	if len(svc.Cfg.ScanDirs) != 1 || svc.Cfg.ScanDirs[0] != "/b" {
+		t.Error("expected /b remaining")
+	}
+}
+
+func TestAddRemoveExclude(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.AddExclude("/tmp/skip")
+	if len(svc.Cfg.ExtraExcludes) != 1 {
+		t.Fatal("expected 1 exclude")
+	}
+	svc.RemoveExclude(0)
+	if len(svc.Cfg.ExtraExcludes) != 0 {
+		t.Error("expected empty excludes")
+	}
+}
+
+func TestSetMaxDepthAndCacheTTL(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.SetMaxDepth(10)
+	svc.SetCacheTTL(48)
+	if svc.Cfg.MaxDepth != 10 {
+		t.Errorf("expected 10, got %d", svc.Cfg.MaxDepth)
+	}
+	if svc.Cfg.CacheTTL != 48 {
+		t.Errorf("expected 48, got %d", svc.Cfg.CacheTTL)
+	}
+}
+
+func TestSetRemoveDefaultIDE(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.SetDefaultIDE("go", "goland")
+	svc.SetDefaultIDE("_default", "code")
+	if svc.Cfg.DefaultIDEs["go"] != "goland" {
+		t.Error("expected go -> goland")
+	}
+	svc.RemoveDefaultIDE("go")
+	if _, ok := svc.Cfg.DefaultIDEs["go"]; ok {
+		t.Error("expected go mapping removed")
+	}
+	if svc.Cfg.DefaultIDEs["_default"] != "code" {
+		t.Error("expected _default to remain")
+	}
+}

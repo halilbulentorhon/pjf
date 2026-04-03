@@ -229,6 +229,79 @@ func (s *ProjectService) RunCommand(p project.Project, command string) (string, 
 	return string(out), err
 }
 
+func (s *ProjectService) RemoveProjectIDE(p project.Project) {
+	delete(s.Cfg.ProjectIDEs, p.Path)
+}
+
+func (s *ProjectService) RemoveSavedCommand(p project.Project, index int) {
+	for i, pc := range s.Cfg.ProjectCommands {
+		expanded := pc.Path
+		if home, err := os.UserHomeDir(); err == nil && len(expanded) > 0 && expanded[0] == '~' {
+			expanded = home + expanded[1:]
+		}
+		if expanded == p.Path {
+			if index >= 0 && index < len(pc.Commands) {
+				s.Cfg.ProjectCommands[i].Commands = append(pc.Commands[:index], pc.Commands[index+1:]...)
+			}
+			return
+		}
+	}
+}
+
+func (s *ProjectService) AddGlobalCommand(name, command string) {
+	s.Cfg.GlobalCommands = append(s.Cfg.GlobalCommands, config.CommandDef{Name: name, Command: command})
+}
+
+func (s *ProjectService) RemoveGlobalCommand(index int) {
+	if index >= 0 && index < len(s.Cfg.GlobalCommands) {
+		s.Cfg.GlobalCommands = append(s.Cfg.GlobalCommands[:index], s.Cfg.GlobalCommands[index+1:]...)
+	}
+}
+
+func (s *ProjectService) AddScanDir(dir string) {
+	for _, d := range s.Cfg.ScanDirs {
+		if d == dir {
+			return
+		}
+	}
+	s.Cfg.ScanDirs = append(s.Cfg.ScanDirs, dir)
+}
+
+func (s *ProjectService) RemoveScanDir(index int) {
+	if index >= 0 && index < len(s.Cfg.ScanDirs) && len(s.Cfg.ScanDirs) > 1 {
+		s.Cfg.ScanDirs = append(s.Cfg.ScanDirs[:index], s.Cfg.ScanDirs[index+1:]...)
+	}
+}
+
+func (s *ProjectService) AddExclude(dir string) {
+	s.Cfg.ExtraExcludes = append(s.Cfg.ExtraExcludes, dir)
+}
+
+func (s *ProjectService) RemoveExclude(index int) {
+	if index >= 0 && index < len(s.Cfg.ExtraExcludes) {
+		s.Cfg.ExtraExcludes = append(s.Cfg.ExtraExcludes[:index], s.Cfg.ExtraExcludes[index+1:]...)
+	}
+}
+
+func (s *ProjectService) SetMaxDepth(depth int) {
+	s.Cfg.MaxDepth = depth
+}
+
+func (s *ProjectService) SetCacheTTL(hours int) {
+	s.Cfg.CacheTTL = hours
+}
+
+func (s *ProjectService) SetDefaultIDE(projectType, ideSlug string) {
+	if s.Cfg.DefaultIDEs == nil {
+		s.Cfg.DefaultIDEs = make(map[string]string)
+	}
+	s.Cfg.DefaultIDEs[projectType] = ideSlug
+}
+
+func (s *ProjectService) RemoveDefaultIDE(projectType string) {
+	delete(s.Cfg.DefaultIDEs, projectType)
+}
+
 func (s *ProjectService) SaveCommand(p project.Project, command string) {
 	for i, pc := range s.Cfg.ProjectCommands {
 		expanded := pc.Path
