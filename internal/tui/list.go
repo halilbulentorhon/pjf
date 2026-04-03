@@ -211,9 +211,9 @@ func (m listModel) View(width, height int, status string) string {
 			}
 		}
 		if m.showHidden {
-			hint = "enter: actions  t: terminal  o: " + ideName + "  r: refresh  h: hide hidden  ?: help  q: quit"
+			hint = "enter: actions  t: terminal  o: " + ideName + "  r: refresh  h: hide hidden  ?: help  s: settings  q: quit"
 		} else {
-			hint = "enter: actions  t: terminal  o: " + ideName + "  r: refresh  h: hidden  ?: help  q: quit"
+			hint = "enter: actions  t: terminal  o: " + ideName + "  r: refresh  h: hidden  ?: help  s: settings  q: quit"
 		}
 	}
 	b.WriteString(helpStyle.Render(hint))

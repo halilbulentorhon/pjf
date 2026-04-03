@@ -12,6 +12,7 @@ func (m helpModel) View(width, height int) string {
 		"  enter        Action menu\n" +
 		"  t            Open in terminal\n" +
 		"  o            Open in IDE\n" +
+		"  s            Settings\n" +
 		"  h            Toggle hidden projects\n" +
 		"  r            Rescan projects\n" +
 		"  ?            Toggle this help\n" +

@@ -22,6 +22,8 @@ const (
 	stateCommandSubmenu
 	stateCommandInput
 	stateOutput
+	stateGlobalSettings
+	stateProjectSettings
 )
 
 type scanCompleteMsg struct {
@@ -57,8 +59,10 @@ type Model struct {
 	ideSubmenu  ideSubmenuModel
 	cmdSubmenu  cmdSubmenuModel
 	cmdInput    cmdInputModel
-	output      outputModel
-	status      string
+	output          outputModel
+	globalSettings  globalSettingsModel
+	projectSettings projectSettingsModel
+	status          string
 	width      int
 	height     int
 }
@@ -165,6 +169,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateCommandInput(msg)
 	case stateOutput:
 		return m.updateOutput(msg)
+	case stateGlobalSettings:
+		return m.updateGlobalSettings(msg)
+	case stateProjectSettings:
+		return m.updateProjectSettings(msg)
 	}
 	return m, nil
 }
@@ -189,6 +197,10 @@ func (m Model) View() string {
 		return m.cmdInput.View()
 	case stateOutput:
 		return m.output.View()
+	case stateGlobalSettings:
+		return m.globalSettings.View()
+	case stateProjectSettings:
+		return m.projectSettings.View()
 	}
 	return ""
 }
@@ -281,6 +293,10 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				}
+			case "s":
+				m.globalSettings = newGlobalSettingsModel(m.service)
+				m.state = stateGlobalSettings
+				return m, nil
 			case "o":
 				if p, ok := m.list.selected(); ok {
 					resolved, ok := m.service.ResolveIDE(p)
@@ -328,6 +344,11 @@ func (m *Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if result.action == "cmd-submenu" {
 		m.cmdSubmenu = newCmdSubmenuModel(m.actions.project, m.service)
 		m.state = stateCommandSubmenu
+		return m, cmd
+	}
+	if result.action == "project-settings" {
+		m.projectSettings = newProjectSettingsModel(m.actions.project, m.service)
+		m.state = stateProjectSettings
 		return m, cmd
 	}
 	if result.status != "" {
@@ -437,6 +458,45 @@ func (m *Model) updateCommandInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 			output, err := m.service.RunCommand(p, command)
 			return commandDoneMsg{title: command, output: output, err: err}
 		}
+	}
+	return m, cmd
+}
+
+func (m *Model) updateGlobalSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "esc" && !m.globalSettings.Inputting() && !m.globalSettings.Picking() {
+			needsRescan := m.globalSettings.NeedsRescan()
+			m.service.SaveConfig(m.configPath)
+			m.state = stateList
+			if needsRescan {
+				m.status = "Rescanning..."
+				m.state = stateScanning
+				return m, m.scanCmd()
+			}
+			return m, nil
+		}
+	}
+	gs, cmd, result := m.globalSettings.Update(msg)
+	m.globalSettings = gs
+	if result.changed {
+		m.service.SaveConfig(m.configPath)
+	}
+	return m, cmd
+}
+
+func (m *Model) updateProjectSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "esc" && !m.projectSettings.picking && !m.projectSettings.adding {
+			m.state = stateActions
+			return m, nil
+		}
+	}
+	ps, cmd, result := m.projectSettings.Update(msg)
+	m.projectSettings = ps
+	if result.changed {
+		m.service.SaveConfig(m.configPath)
 	}
 	return m, cmd
 }

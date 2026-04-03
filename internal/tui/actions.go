@@ -42,6 +42,11 @@ func newActionsModelForProject(p project.Project, svc *service.ProjectService, h
 		{label: "Copy Path", action: "copy", run: func() error { return svc.CopyPath(p) }},
 	}
 
+	items = append(items, actionItem{
+		label:  "Project Settings",
+		action: "project-settings",
+	})
+
 	if hidden {
 		items = append(items, actionItem{
 			label:  "Unhide",
@@ -119,6 +124,8 @@ func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, actionResult) 
 					return m, nil, actionResult{action: "ide-submenu"}
 				case "cmd-submenu":
 					return m, nil, actionResult{action: "cmd-submenu"}
+				case "project-settings":
+					return m, nil, actionResult{action: "project-settings"}
 				case "hide":
 					m.confirming = true
 					m.confirmLabel = item.label
