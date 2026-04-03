@@ -18,26 +18,13 @@ pjf scans your filesystem for git repositories, presents them in a fuzzy-searcha
 
 ## Installation
 
-### Homebrew (recommended)
+### Quick install (recommended)
 
 ```bash
-brew tap halilbulentorhon/tap
-brew install pjf
+curl -sSL https://raw.githubusercontent.com/halilbulentorhon/pjf/main/install.sh | sh
 ```
 
-### Download binary
-
-Download from [GitHub Releases](https://github.com/halilbulentorhon/pjf/releases/latest):
-
-```bash
-# macOS Apple Silicon
-curl -sSL https://github.com/halilbulentorhon/pjf/releases/latest/download/pjf_darwin_arm64.tar.gz | tar xz
-sudo mv pjf /usr/local/bin/
-
-# macOS Intel
-curl -sSL https://github.com/halilbulentorhon/pjf/releases/latest/download/pjf_darwin_amd64.tar.gz | tar xz
-sudo mv pjf /usr/local/bin/
-```
+Detects your OS and architecture, downloads the latest release, and installs to `/usr/local/bin/`.
 
 ### go install
 

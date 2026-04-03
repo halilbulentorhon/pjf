@@ -35,15 +35,3 @@ changelog:
       - "^chore:"
       - "^test:"
 
-brews:
-  - repository:
-      owner: halilbulentorhon
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    homepage: https://github.com/halilbulentorhon/pjf
-    description: Fast terminal UI for discovering and managing local dev projects
-    license: MIT
-    install: |
-      bin.install "pjf"
-    test: |
-      system "#{bin}/pjf", "--help"
