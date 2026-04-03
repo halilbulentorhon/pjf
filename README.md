@@ -51,3 +51,7 @@ macOS only for now. Linux and Windows planned.
 ## License
 
 MIT
+
+---
+
+<sub>Vibe coded with [Claude Code](https://claude.ai/code) from start to finish.</sub>
