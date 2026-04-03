@@ -11,6 +11,7 @@ func (m helpModel) View(width, height int) string {
 		"  Any char     Fuzzy search filter\n" +
 		"  ↑/↓ or j/k   Navigate list\n" +
 		"  enter        Action menu\n" +
+		"  h            Toggle hidden projects\n" +
 		"  r            Rescan projects\n" +
 		"  ?            Toggle this help\n" +
 		"  q / ctrl+c   Quit\n\n" +
