@@ -24,7 +24,7 @@ type listModel struct {
 
 func newListModel() listModel {
 	ti := textinput.New()
-	ti.Placeholder = "ara..."
+	ti.Placeholder = "search..."
 	ti.Prompt = "> "
 	ti.Focus()
 	return listModel{
@@ -135,14 +135,14 @@ func (m listModel) View(width, height int, status string) string {
 	}
 
 	if len(m.filtered) == 0 && len(m.projects) > 0 {
-		b.WriteString(helpStyle.Render("  Sonuç bulunamadı") + "\n")
+		b.WriteString(helpStyle.Render("  No results found") + "\n")
 	}
 
 	b.WriteString("\n")
 	if status != "" {
 		b.WriteString(statusBarStyle.Render(status) + "\n")
 	}
-	b.WriteString(helpStyle.Render("enter: eylemler  r: yenile  ?: yardım  q: çık"))
+	b.WriteString(helpStyle.Render("enter: actions  r: refresh  ?: help  q: quit"))
 
 	return b.String()
 }

@@ -24,8 +24,8 @@ func newActionsModel() actionsModel {
 
 func newActionsModelForProject(p project.Project, svc *service.ProjectService) actionsModel {
 	items := []actionItem{
-		{label: "Terminalde Aç", run: func() error { return svc.OpenTerminal(p) }},
-		{label: "Yolu Kopyala", run: func() error { return svc.CopyPath(p) }},
+		{label: "Open in Terminal", run: func() error { return svc.OpenTerminal(p) }},
+		{label: "Copy Path", run: func() error { return svc.CopyPath(p) }},
 	}
 	return actionsModel{
 		project: p,
@@ -49,9 +49,9 @@ func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, string) {
 			if m.cursor < len(m.items) {
 				item := m.items[m.cursor]
 				if err := item.run(); err != nil {
-					return m, nil, "Hata: " + err.Error()
+					return m, nil, "Error: " + err.Error()
 				}
-				return m, nil, item.label + " — tamamlandı"
+				return m, nil, item.label + " — done"
 			}
 		}
 	}
@@ -69,7 +69,7 @@ func (m actionsModel) View() string {
 				s += itemStyle.Render("  "+item.label) + "\n"
 			}
 		}
-		s += "\n" + helpStyle.Render("enter: çalıştır  esc: geri")
+		s += "\n" + helpStyle.Render("enter: run  esc: back")
 		return s
 	}())
 	return b

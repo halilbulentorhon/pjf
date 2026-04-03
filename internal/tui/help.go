@@ -7,14 +7,14 @@ func newHelpModel() helpModel {
 }
 
 func (m helpModel) View(width, height int) string {
-	content := titleStyle.Render("Klavye Kısayolları") + "\n\n" +
-		"  Karakter     Fuzzy arama filtresi\n" +
-		"  ↑/↓ veya j/k Listeyi gezin\n" +
-		"  enter        Eylem menüsü\n" +
-		"  r            Projeleri yeniden tara\n" +
-		"  ?            Bu yardımı göster/gizle\n" +
-		"  q / ctrl+c   Çıkış\n\n" +
-		helpStyle.Render("esc veya ?: kapat")
+	content := titleStyle.Render("Keyboard Shortcuts") + "\n\n" +
+		"  Any char     Fuzzy search filter\n" +
+		"  ↑/↓ or j/k   Navigate list\n" +
+		"  enter        Action menu\n" +
+		"  r            Rescan projects\n" +
+		"  ?            Toggle this help\n" +
+		"  q / ctrl+c   Quit\n\n" +
+		helpStyle.Render("esc or ?: close")
 
 	return actionMenuStyle.Render(content)
 }

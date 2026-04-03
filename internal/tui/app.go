@@ -86,7 +86,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case scanCompleteMsg:
 		if msg.err != nil {
-			m.status = "Tarama hatası: " + msg.err.Error()
+			m.status = "Scan error: " + msg.err.Error()
 			return m, nil
 		}
 		m.list.setProjects(msg.projects)
@@ -100,7 +100,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case refreshCompleteMsg:
 		if msg.err == nil && msg.projects != nil {
 			m.list.setProjects(msg.projects)
-			m.status = "Liste güncellendi"
+			m.status = "List updated"
 		}
 		return m, nil
 
@@ -145,7 +145,7 @@ func (m Model) View() string {
 }
 
 func (m Model) viewScanning() string {
-	return wizardTextStyle.Render("Projeler taranıyor...")
+	return wizardTextStyle.Render("Scanning for projects...")
 }
 
 func (m Model) loadFromCacheCmd() tea.Cmd {
@@ -198,7 +198,7 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = stateHelp
 			return m, nil
 		case "r":
-			m.status = "Yeniden taranıyor..."
+			m.status = "Rescanning..."
 			m.state = stateScanning
 			return m, m.scanCmd()
 		case "enter":
