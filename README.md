@@ -4,7 +4,6 @@
 
 pjf scans your filesystem for git repositories, presents them in a fuzzy-searchable grouped list, and lets you open them in your IDE or terminal, run commands, and manage project organization — all without leaving the terminal.
 
-<!-- TODO: Add screenshot/GIF here after first release -->
 
 ## Install
 
