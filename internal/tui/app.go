@@ -24,6 +24,7 @@ const (
 	stateOutput
 	stateGlobalSettings
 	stateProjectSettings
+	stateGroupSubmenu
 )
 
 type scanCompleteMsg struct {
@@ -62,6 +63,7 @@ type Model struct {
 	output          outputModel
 	globalSettings  globalSettingsModel
 	projectSettings projectSettingsModel
+	groupSubmenu    groupSubmenuModel
 	status          string
 	width      int
 	height     int
@@ -173,6 +175,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateGlobalSettings(msg)
 	case stateProjectSettings:
 		return m.updateProjectSettings(msg)
+	case stateGroupSubmenu:
+		return m.updateGroupSubmenu(msg)
 	}
 	return m, nil
 }
@@ -201,6 +205,8 @@ func (m Model) View() string {
 		return m.globalSettings.View()
 	case stateProjectSettings:
 		return m.projectSettings.View()
+	case stateGroupSubmenu:
+		return m.groupSubmenu.View()
 	}
 	return ""
 }
@@ -355,6 +361,11 @@ func (m *Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = stateProjectSettings
 		return m, cmd
 	}
+	if result.action == "group-submenu" {
+		m.groupSubmenu = newGroupSubmenuModel(m.actions.project, m.service)
+		m.state = stateGroupSubmenu
+		return m, cmd
+	}
 	if result.status != "" {
 		m.status = result.status
 		switch result.action {
@@ -501,6 +512,25 @@ func (m *Model) updateProjectSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.projectSettings = ps
 	if result.changed {
 		m.service.SaveConfig(m.configPath)
+	}
+	return m, cmd
+}
+
+func (m *Model) updateGroupSubmenu(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "esc" && !m.groupSubmenu.adding {
+			m.state = stateActions
+			return m, nil
+		}
+	}
+	sub, cmd, result := m.groupSubmenu.Update(msg)
+	m.groupSubmenu = sub
+	if result.action == "group-changed" {
+		m.service.SaveConfig(m.configPath)
+		m.list.rebuildSections()
+		m.state = stateList
+		m.status = "Group updated"
 	}
 	return m, cmd
 }

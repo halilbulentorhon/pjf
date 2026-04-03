@@ -47,6 +47,11 @@ func newActionsModelForProject(p project.Project, svc *service.ProjectService, h
 		action: "project-settings",
 	})
 
+	items = append(items, actionItem{
+		label:  "Add to Group",
+		action: "group-submenu",
+	})
+
 	if hidden {
 		items = append(items, actionItem{
 			label:  "Unhide",
@@ -126,6 +131,8 @@ func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, actionResult) 
 					return m, nil, actionResult{action: "cmd-submenu"}
 				case "project-settings":
 					return m, nil, actionResult{action: "project-settings"}
+				case "group-submenu":
+					return m, nil, actionResult{action: "group-submenu"}
 				case "hide":
 					m.confirming = true
 					m.confirmLabel = item.label
