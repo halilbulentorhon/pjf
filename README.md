@@ -54,4 +54,4 @@ MIT
 
 ---
 
-<sub>Vibe coded with [Claude Code](https://claude.ai/code) from start to finish.</sub>
+<sub>Sadlı, vibe coded with Claude Code from start to finish :D</sub>
