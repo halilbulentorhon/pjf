@@ -195,9 +195,9 @@ func (m listModel) View(width, height int, status string) string {
 	if m.searchFocused {
 		hint = "esc: clear  ↓: back to list"
 	} else if m.showHidden {
-		hint = "enter: actions  t: terminal  r: refresh  h: hide hidden  ?: help  q: quit"
+		hint = "enter: actions  t: terminal  o: IDE  r: refresh  h: hide hidden  ?: help  q: quit"
 	} else {
-		hint = "enter: actions  t: terminal  r: refresh  h: hidden  ?: help  q: quit"
+		hint = "enter: actions  t: terminal  o: IDE  r: refresh  h: hidden  ?: help  q: quit"
 	}
 	b.WriteString(helpStyle.Render(hint))
 
