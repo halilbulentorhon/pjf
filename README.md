@@ -28,7 +28,10 @@ mv pjf /usr/local/bin/
 ```
 </details>
 
+**Update:** `pjf update`
 **Uninstall:** `pjf uninstall`
+
+pjf checks for updates in the background. When a new version is available, you'll see a message after exiting.
 
 ## Quick Start
 
