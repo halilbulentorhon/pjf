@@ -13,7 +13,8 @@ func (m helpModel) View(width, height int) string {
 		"  t            Open in terminal\n" +
 		"  o            Open in IDE\n" +
 		"  s            Settings\n" +
-		"  h            Toggle hidden projects\n" +
+		"  h            Hide project\n" +
+		"  ctrl+h       Show/hide hidden projects\n" +
 		"  r            Rescan projects\n" +
 		"  m            Move to group\n" +
 		"  ←/→          Collapse/expand groups\n" +

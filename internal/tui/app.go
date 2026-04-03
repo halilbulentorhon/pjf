@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -257,6 +258,20 @@ func (m *Model) updateWizard(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.list.confirmingHide {
+			switch msg.String() {
+			case "y":
+				m.service.HideProject(m.list.confirmProject)
+				m.service.SaveConfig(m.configPath)
+				m.list.confirmingHide = false
+				m.list.rebuildSections()
+				m.status = "Hidden: " + m.list.confirmProject.Name
+			default:
+				m.list.confirmingHide = false
+				m.status = ""
+			}
+			return m, nil
+		}
 		if !m.list.searchFocused {
 			switch msg.String() {
 			case "q":
@@ -270,6 +285,13 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = stateScanning
 				return m, m.scanCmd()
 			case "h":
+				if p, ok := m.list.selected(); ok {
+					m.list.confirmingHide = true
+					m.list.confirmProject = p
+					m.status = fmt.Sprintf("Hide %q? (y/n)", p.Name)
+					return m, nil
+				}
+			case "ctrl+h":
 				m.list.showHidden = !m.list.showHidden
 				m.list.rebuildSections()
 				if m.list.showHidden {

@@ -34,6 +34,8 @@ type listModel struct {
 	showHidden     bool
 	searchFocused  bool
 	otherCollapsed bool
+	confirmingHide bool
+	confirmProject project.Project
 	isHidden       func(project.Project) bool
 	resolveIDEName func(project.Project) string
 	grouper        func([]project.Project) []service.GroupedSection
@@ -382,7 +384,7 @@ func (m listModel) View(width, height int, status string) string {
 					ideName = name
 				}
 			}
-			hint = "enter: actions  t: terminal  o: " + ideName + "  m: move  r: refresh  ?: help  q: quit"
+			hint = "enter: actions  t: terminal  o: " + ideName + "  m: move  h: hide  r: refresh  ?: help  q: quit"
 		}
 	}
 	b.WriteString(helpStyle.Render(hint))
