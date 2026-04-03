@@ -77,7 +77,7 @@ func New(svc *service.ProjectService, configPath string, isFirstRun bool) Model 
 				return resolved.Name
 			}
 			return ""
-		}),
+		}, svc.GroupedProjects),
 		actions:    newActionsModel(),
 		help:       newHelpModel(),
 	}
@@ -265,7 +265,7 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.scanCmd()
 			case "h":
 				m.list.showHidden = !m.list.showHidden
-				m.list.applyFilter()
+				m.list.rebuildSections()
 				if m.list.showHidden {
 					hasHidden := false
 					for _, p := range m.list.projects {
@@ -321,8 +321,12 @@ func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-	lst, cmd := m.list.Update(msg)
+	lst, cmd, collapseToggle := m.list.Update(msg)
 	m.list = lst
+	if collapseToggle {
+		m.list.toggleCollapse(m.service)
+		m.service.SaveConfig(m.configPath)
+	}
 	return m, cmd
 }
 
@@ -356,11 +360,11 @@ func (m *Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch result.action {
 		case "hide":
 			m.service.SaveConfig(m.configPath)
-			m.list.applyFilter()
+			m.list.rebuildSections()
 			m.state = stateList
 		case "unhide":
 			m.service.SaveConfig(m.configPath)
-			m.list.applyFilter()
+			m.list.rebuildSections()
 			m.state = stateList
 		case "delete":
 			m.service.SaveConfig(m.configPath)

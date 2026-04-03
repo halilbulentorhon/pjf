@@ -41,6 +41,16 @@ var (
 	defaultMarkerStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("3"))
 
+	groupHeaderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("5")).
+				Bold(true).
+				Padding(0, 2)
+
+	groupHeaderSelectedStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("12")).
+					Bold(true).
+					Padding(0, 2)
+
 	activeTabStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("12")).
 			Bold(true).
