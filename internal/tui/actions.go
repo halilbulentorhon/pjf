@@ -39,6 +39,7 @@ func newActionsModelForProject(p project.Project, svc *service.ProjectService, h
 		{label: "Open in IDE", action: "ide-submenu"},
 		{label: "Open in Terminal", action: "open", run: func() error { return svc.OpenTerminal(p) }},
 		{label: "Copy Path", action: "copy", run: func() error { return svc.CopyPath(p) }},
+		{label: "Run Command", action: "cmd-submenu"},
 	}
 
 	if hidden {
@@ -108,6 +109,8 @@ func (m actionsModel) Update(msg tea.Msg) (actionsModel, tea.Cmd, actionResult) 
 				switch item.action {
 				case "ide-submenu":
 					return m, nil, actionResult{action: "ide-submenu"}
+				case "cmd-submenu":
+					return m, nil, actionResult{action: "cmd-submenu"}
 				case "hide":
 					m.confirming = true
 					m.confirmLabel = item.label

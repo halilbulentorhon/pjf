@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/halilbulentorhon/pjf/internal/ide"
 	"github.com/halilbulentorhon/pjf/internal/project"
@@ -18,6 +19,9 @@ const (
 	stateActions
 	stateHelp
 	stateIDESubmenu
+	stateCommandSubmenu
+	stateCommandInput
+	stateOutput
 )
 
 type scanCompleteMsg struct {
@@ -35,6 +39,12 @@ type wizardCompleteMsg struct{}
 
 type statusMsg string
 
+type commandDoneMsg struct {
+	title  string
+	output string
+	err    error
+}
+
 type Model struct {
 	state      appState
 	prevState  appState
@@ -44,8 +54,11 @@ type Model struct {
 	list       listModel
 	actions    actionsModel
 	help       helpModel
-	ideSubmenu ideSubmenuModel
-	status     string
+	ideSubmenu  ideSubmenuModel
+	cmdSubmenu  cmdSubmenuModel
+	cmdInput    cmdInputModel
+	output      outputModel
+	status      string
 	width      int
 	height     int
 }
@@ -85,6 +98,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.list.setSize(msg.Width, msg.Height)
+		m.output.height = msg.Height
 		return m, nil
 
 	case tea.KeyMsg:
@@ -120,6 +134,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case statusMsg:
 		m.status = string(msg)
 		return m, nil
+
+	case commandDoneMsg:
+		if m.state == stateOutput {
+			output := msg.output
+			if msg.err != nil {
+				output += "\n" + msg.err.Error()
+			}
+			m.output.setOutput(output)
+		}
+		return m, nil
 	}
 
 	switch m.state {
@@ -135,6 +159,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateHelp(msg)
 	case stateIDESubmenu:
 		return m.updateIDESubmenu(msg)
+	case stateCommandSubmenu:
+		return m.updateCommandSubmenu(msg)
+	case stateCommandInput:
+		return m.updateCommandInput(msg)
+	case stateOutput:
+		return m.updateOutput(msg)
 	}
 	return m, nil
 }
@@ -153,6 +183,12 @@ func (m Model) View() string {
 		return m.help.View(m.width, m.height)
 	case stateIDESubmenu:
 		return m.ideSubmenu.View()
+	case stateCommandSubmenu:
+		return m.cmdSubmenu.View()
+	case stateCommandInput:
+		return m.cmdInput.View()
+	case stateOutput:
+		return m.output.View()
 	}
 	return ""
 }
@@ -289,6 +325,11 @@ func (m *Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = stateIDESubmenu
 		return m, cmd
 	}
+	if result.action == "cmd-submenu" {
+		m.cmdSubmenu = newCmdSubmenuModel(m.actions.project, m.service)
+		m.state = stateCommandSubmenu
+		return m, cmd
+	}
 	if result.status != "" {
 		m.status = result.status
 		switch result.action {
@@ -342,6 +383,70 @@ func (m *Model) updateIDESubmenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = stateList
 		}
 	}
+	return m, cmd
+}
+
+func (m *Model) updateCommandSubmenu(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "esc" {
+			m.state = stateActions
+			return m, nil
+		}
+	}
+	sub, cmd, result := m.cmdSubmenu.Update(msg)
+	m.cmdSubmenu = sub
+	switch result.action {
+	case "run":
+		p := m.cmdSubmenu.project
+		command := result.command
+		m.output = newOutputModel(command, m.height)
+		m.state = stateOutput
+		return m, func() tea.Msg {
+			output, err := m.service.RunCommand(p, command)
+			return commandDoneMsg{title: command, output: output, err: err}
+		}
+	case "custom-input":
+		m.cmdInput = newCmdInputModel()
+		m.state = stateCommandInput
+		return m, textinput.Blink
+	}
+	return m, cmd
+}
+
+func (m *Model) updateCommandInput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "esc" {
+			m.state = stateCommandSubmenu
+			return m, nil
+		}
+	}
+	inp, cmd, result := m.cmdInput.Update(msg)
+	m.cmdInput = inp
+	if result.command != "" {
+		p := m.cmdSubmenu.project
+		command := result.command
+		m.output = newOutputModel(command, m.height)
+		m.state = stateOutput
+		return m, func() tea.Msg {
+			output, err := m.service.RunCommand(p, command)
+			return commandDoneMsg{title: command, output: output, err: err}
+		}
+	}
+	return m, cmd
+}
+
+func (m *Model) updateOutput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "esc" {
+			m.state = stateList
+			return m, nil
+		}
+	}
+	out, cmd := m.output.Update(msg)
+	m.output = out
 	return m, cmd
 }
 
