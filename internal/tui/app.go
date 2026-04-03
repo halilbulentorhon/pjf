@@ -190,44 +190,55 @@ func (m *Model) updateWizard(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q":
-			return m, tea.Quit
-		case "?":
-			m.prevState = stateList
-			m.state = stateHelp
-			return m, nil
-		case "r":
-			m.status = "Rescanning..."
-			m.state = stateScanning
-			return m, m.scanCmd()
-		case "h":
-			m.list.showHidden = !m.list.showHidden
-			m.list.applyFilter()
-			if m.list.showHidden {
-				hasHidden := false
-				for _, p := range m.list.projects {
-					if m.service.IsHidden(p) {
-						hasHidden = true
-						break
-					}
-				}
-				if !hasHidden {
-					m.status = "No hidden projects"
-					m.list.showHidden = false
-				} else {
-					m.status = "Showing hidden projects"
-				}
-			} else {
-				m.status = ""
-			}
-			return m, nil
-		case "enter":
-			if p, ok := m.list.selected(); ok {
-				hidden := m.service.IsHidden(p)
-				m.actions = newActionsModelForProject(p, m.service, hidden)
-				m.state = stateActions
+		if !m.list.searchFocused {
+			switch msg.String() {
+			case "q":
+				return m, tea.Quit
+			case "?":
+				m.prevState = stateList
+				m.state = stateHelp
 				return m, nil
+			case "r":
+				m.status = "Rescanning..."
+				m.state = stateScanning
+				return m, m.scanCmd()
+			case "h":
+				m.list.showHidden = !m.list.showHidden
+				m.list.applyFilter()
+				if m.list.showHidden {
+					hasHidden := false
+					for _, p := range m.list.projects {
+						if m.service.IsHidden(p) {
+							hasHidden = true
+							break
+						}
+					}
+					if !hasHidden {
+						m.status = "No hidden projects"
+						m.list.showHidden = false
+					} else {
+						m.status = "Showing hidden projects"
+					}
+				} else {
+					m.status = ""
+				}
+				return m, nil
+			case "t":
+				if p, ok := m.list.selected(); ok {
+					if err := m.service.OpenTerminal(p); err != nil {
+						m.status = "Error: " + err.Error()
+					} else {
+						m.status = "Open in Terminal — done"
+					}
+					return m, nil
+				}
+			case "enter":
+				if p, ok := m.list.selected(); ok {
+					hidden := m.service.IsHidden(p)
+					m.actions = newActionsModelForProject(p, m.service, hidden)
+					m.state = stateActions
+					return m, nil
+				}
 			}
 		}
 	}

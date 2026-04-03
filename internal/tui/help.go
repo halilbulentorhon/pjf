@@ -8,13 +8,14 @@ func newHelpModel() helpModel {
 
 func (m helpModel) View(width, height int) string {
 	content := titleStyle.Render("Keyboard Shortcuts") + "\n\n" +
-		"  Any char     Fuzzy search filter\n" +
-		"  ↑/↓ or j/k   Navigate list\n" +
+		"  ↑/↓          Navigate list / search\n" +
 		"  enter        Action menu\n" +
+		"  t            Open in terminal\n" +
 		"  h            Toggle hidden projects\n" +
 		"  r            Rescan projects\n" +
 		"  ?            Toggle this help\n" +
-		"  q / ctrl+c   Quit\n\n" +
+		"  q            Quit\n\n" +
+		"  Search: ↑ at top enters search, ↓/esc returns to list\n\n" +
 		helpStyle.Render("esc or ?: close")
 
 	return actionMenuStyle.Render(content)

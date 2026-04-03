@@ -14,14 +14,15 @@ import (
 )
 
 type listModel struct {
-	search     textinput.Model
-	projects   []project.Project
-	filtered   []project.Project
-	cursor     int
-	width      int
-	height     int
-	showHidden bool
-	isHidden   func(project.Project) bool
+	search        textinput.Model
+	projects      []project.Project
+	filtered      []project.Project
+	cursor        int
+	width         int
+	height        int
+	showHidden    bool
+	searchFocused bool
+	isHidden      func(project.Project) bool
 }
 
 func newListModel(isHidden func(project.Project) bool) listModel {
@@ -30,8 +31,9 @@ func newListModel(isHidden func(project.Project) bool) listModel {
 	ti.Prompt = "> "
 	ti.Focus()
 	return listModel{
-		search:   ti,
-		isHidden: isHidden,
+		search:        ti,
+		searchFocused: true,
+		isHidden:      isHidden,
 	}
 }
 
@@ -55,27 +57,46 @@ func (m listModel) selected() (project.Project, bool) {
 func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.searchFocused {
+			switch msg.String() {
+			case "down":
+				m.searchFocused = false
+				m.search.Blur()
+				return m, nil
+			case "esc":
+				m.search.SetValue("")
+				m.applyFilter()
+				return m, nil
+			case "enter":
+				return m, nil
+			}
+			oldVal := m.search.Value()
+			var cmd tea.Cmd
+			m.search, cmd = m.search.Update(msg)
+			if m.search.Value() != oldVal {
+				m.applyFilter()
+			}
+			return m, cmd
+		}
+
 		switch msg.String() {
-		case "up", "k":
+		case "up":
 			if m.cursor > 0 {
 				m.cursor--
+			} else {
+				m.searchFocused = true
+				m.search.Focus()
+				return m, textinput.Blink
 			}
 			return m, nil
-		case "down", "j":
+		case "down":
 			if m.cursor < len(m.filtered)-1 {
 				m.cursor++
 			}
 			return m, nil
 		}
 	}
-
-	oldVal := m.search.Value()
-	var cmd tea.Cmd
-	m.search, cmd = m.search.Update(msg)
-	if m.search.Value() != oldVal {
-		m.applyFilter()
-	}
-	return m, cmd
+	return m, nil
 }
 
 func (m *listModel) applyFilter() {
@@ -143,14 +164,15 @@ func (m listModel) View(width, height int, status string) string {
 
 		row := fmt.Sprintf("%s %s %s %s", nameCol, pathCol, typeCol, branchCol)
 
+		selected := !m.searchFocused && i == m.cursor
 		if hidden {
-			if i == m.cursor {
+			if selected {
 				b.WriteString(hiddenSelectedItemStyle.Render("▸ "+row) + "\n")
 			} else {
 				b.WriteString(hiddenItemStyle.Render("  "+row) + "\n")
 			}
 		} else {
-			if i == m.cursor {
+			if selected {
 				b.WriteString(selectedItemStyle.Render("▸ "+row) + "\n")
 			} else {
 				b.WriteString(itemStyle.Render("  "+row) + "\n")
@@ -169,9 +191,13 @@ func (m listModel) View(width, height int, status string) string {
 	if m.showHidden {
 		b.WriteString(helpStyle.Render("(showing hidden projects)") + "\n")
 	}
-	hint := "enter: actions  r: refresh  h: hidden  ?: help  q: quit"
-	if m.showHidden {
-		hint = "enter: actions  r: refresh  h: hide hidden  ?: help  q: quit"
+	var hint string
+	if m.searchFocused {
+		hint = "esc: clear  ↓: back to list"
+	} else if m.showHidden {
+		hint = "enter: actions  t: terminal  r: refresh  h: hide hidden  ?: help  q: quit"
+	} else {
+		hint = "enter: actions  t: terminal  r: refresh  h: hidden  ?: help  q: quit"
 	}
 	b.WriteString(helpStyle.Render(hint))
 
