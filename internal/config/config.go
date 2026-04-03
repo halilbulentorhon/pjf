@@ -13,6 +13,7 @@ type Config struct {
 	ScanDirs       []string `yaml:"scan_dirs"`
 	ExtraExcludes  []string `yaml:"extra_excludes"`
 	ManualProjects []string `yaml:"manual_projects"`
+	HiddenProjects []string `yaml:"hidden_projects"`
 	MaxDepth       int      `yaml:"max_depth"`
 	CacheTTL       int      `yaml:"cache_ttl"`
 }
