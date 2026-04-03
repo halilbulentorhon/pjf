@@ -9,13 +9,27 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type CommandDef struct {
+	Name    string `yaml:"name"`
+	Command string `yaml:"command"`
+}
+
+type ProjectCommandSet struct {
+	Path     string       `yaml:"path"`
+	Commands []CommandDef `yaml:"commands"`
+}
+
 type Config struct {
-	ScanDirs       []string `yaml:"scan_dirs"`
-	ExtraExcludes  []string `yaml:"extra_excludes"`
-	ManualProjects []string `yaml:"manual_projects"`
-	HiddenProjects []string `yaml:"hidden_projects"`
-	MaxDepth       int      `yaml:"max_depth"`
-	CacheTTL       int      `yaml:"cache_ttl"`
+	ScanDirs        []string            `yaml:"scan_dirs"`
+	ExtraExcludes   []string            `yaml:"extra_excludes"`
+	ManualProjects  []string            `yaml:"manual_projects"`
+	HiddenProjects  []string            `yaml:"hidden_projects"`
+	DefaultIDEs     map[string]string   `yaml:"default_ides"`
+	ProjectIDEs     map[string]string   `yaml:"project_ides"`
+	GlobalCommands  []CommandDef        `yaml:"global_commands"`
+	ProjectCommands []ProjectCommandSet `yaml:"project_commands"`
+	MaxDepth        int                 `yaml:"max_depth"`
+	CacheTTL        int                 `yaml:"cache_ttl"`
 }
 
 func Load(path string) (*Config, bool, error) {
