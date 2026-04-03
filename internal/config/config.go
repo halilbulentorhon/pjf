@@ -19,6 +19,12 @@ type ProjectCommandSet struct {
 	Commands []CommandDef `yaml:"commands"`
 }
 
+type GroupDef struct {
+	Name      string   `yaml:"name"`
+	Collapsed bool     `yaml:"collapsed"`
+	Projects  []string `yaml:"projects"`
+}
+
 type Config struct {
 	ScanDirs        []string            `yaml:"scan_dirs"`
 	ExtraExcludes   []string            `yaml:"extra_excludes"`
@@ -28,6 +34,7 @@ type Config struct {
 	ProjectIDEs     map[string]string   `yaml:"project_ides"`
 	GlobalCommands  []CommandDef        `yaml:"global_commands"`
 	ProjectCommands []ProjectCommandSet `yaml:"project_commands"`
+	Groups          []GroupDef          `yaml:"groups"`
 	MaxDepth        int                 `yaml:"max_depth"`
 	CacheTTL        int                 `yaml:"cache_ttl"`
 }
