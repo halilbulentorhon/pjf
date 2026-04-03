@@ -1,53 +1,35 @@
 # ProjectFinder (pjf)
 
-A fast terminal UI for discovering, organizing, and managing your local development projects.
+> A fast terminal UI for discovering, organizing, and managing your local development projects.
 
 pjf scans your filesystem for git repositories, presents them in a fuzzy-searchable grouped list, and lets you open them in your IDE or terminal, run commands, and manage project organization — all without leaving the terminal.
 
-## Features
+<!-- TODO: Add screenshot/GIF here after first release -->
 
-- **Auto-discovery** — Scans directories for git repos with smart excludes
-- **Fuzzy search** — Type to instantly filter across all projects
-- **Project groups** — Organize projects into collapsible groups (Work, Personal, etc.)
-- **IDE integration** — Auto-detects installed IDEs (VS Code, Cursor, IntelliJ, GoLand, WebStorm, Zed, Claude Code, Neovim, Vim)
-- **Type-based IDE defaults** — Set default IDE per project type (Go → GoLand, Node → VS Code)
-- **Custom commands** — Global and per-project saved commands with output viewer
-- **Quick actions** — Single-key shortcuts for common operations
-- **Settings UI** — Manage all configuration from within the TUI
-- **Smart caching** — Instant startup with background refresh
-
-## Installation
-
-### Quick install (recommended)
+## Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/halilbulentorhon/pjf/main/install.sh | sh
 ```
 
-Detects your OS and architecture, downloads the latest release, and installs to `/usr/local/bin/`.
+<details>
+<summary>Other installation methods</summary>
 
-### go install
-
+**go install:**
 ```bash
 go install github.com/halilbulentorhon/pjf@latest
 ```
 
-### From source
-
+**From source:**
 ```bash
 git clone https://github.com/halilbulentorhon/pjf.git
 cd pjf
 go build -o pjf .
 mv pjf /usr/local/bin/
 ```
+</details>
 
-### Uninstall
-
-```bash
-pjf uninstall
-```
-
-Removes config (`~/.config/pjf/`), cache (`~/.cache/pjf/`), and the binary.
+**Uninstall:** `pjf uninstall`
 
 ## Quick Start
 
@@ -55,7 +37,21 @@ Removes config (`~/.config/pjf/`), cache (`~/.cache/pjf/`), and the binary.
 pjf
 ```
 
-On first run, a setup wizard asks which directories to scan. After scanning, you'll see your projects listed.
+On first run, a setup wizard asks which directories to scan. After scanning, you'll see your projects listed and ready to go.
+
+## What Can It Do?
+
+**Find projects fast** — Fuzzy search across hundreds of projects instantly.
+
+**Organize into groups** — Create groups like Work, Personal, Open Source. Collapse/expand with arrow keys.
+
+**Open anywhere** — Press `t` for terminal, `o` for your IDE. pjf auto-detects VS Code, Cursor, IntelliJ, GoLand, WebStorm, Zed, Claude Code, Neovim, and Vim.
+
+**Smart IDE defaults** — Set Go projects to open in GoLand, Node in VS Code. Override per project.
+
+**Run commands** — Save frequently used commands (build, test, deploy) per project or globally. Run ad-hoc commands with output viewer.
+
+**Manage everything in-app** — Press `s` for settings. No YAML editing required.
 
 ## Keyboard Shortcuts
 
@@ -63,137 +59,109 @@ On first run, a setup wizard asks which directories to scan. After scanning, you
 
 | Key | Action |
 |-----|--------|
-| Any character | Fuzzy search (when search focused) |
-| `↑` / `↓` | Navigate list / search |
-| `enter` | Open action menu |
+| `enter` | Action menu |
 | `t` | Open in terminal |
 | `o` | Open in default IDE |
 | `m` | Move to group |
+| `s` | Settings |
 | `r` | Rescan projects |
 | `h` | Toggle hidden projects |
-| `s` | Settings |
 | `?` | Help |
 | `q` | Quit |
-| `←` | Collapse group / jump to header |
-| `→` | Expand group / jump to next group |
-| `u` / `d` | Reorder groups (on header) |
-| `esc` | Search → clear, List → search, Empty search → quit |
+| `←` / `→` | Collapse/expand groups |
+| `u` / `d` | Reorder groups |
+| `esc` | Jump to search bar |
+
+### Search
+
+Search is focused by default — just start typing. Press `↓` to go to the list. Press `esc` to clear (or quit if empty).
 
 ### Menus
 
-| Key | Action |
-|-----|--------|
-| `1-9` | Select item by number |
-| `↑` / `↓` | Navigate |
-| `enter` | Confirm |
-| `esc` | Back |
-
-### Search Mode
-
-Search bar is focused by default. Start typing to filter. Press `↓` to move to the list and enable shortcuts. Press `esc` or `↑` at top to return to search.
+`1-9` select by number. `↑/↓` navigate. `enter` confirm. `esc` back.
 
 ## Action Menu
 
-Select a project and press `enter`:
+Press `enter` on any project:
 
-1. **Open in IDE** — Pick from detected IDEs, set defaults
-2. **Open in Terminal** — Opens a new terminal window at the project
-3. **Run Command** — Saved commands or ad-hoc input with output viewer
-4. **Copy Path** — Copies project path to clipboard
-5. **Project Settings** — Manage IDE override and saved commands
-6. **Add to Group** — Assign to a group or create new
-7. **Hide from List** — Hide project (reversible)
-8. **Delete Project** — Remove from filesystem (with confirmation)
+| # | Action | Description |
+|---|--------|-------------|
+| 1 | Open in IDE | Pick from detected IDEs, set defaults |
+| 2 | Open in Terminal | New terminal window at project dir |
+| 3 | Run Command | Saved or ad-hoc commands with output |
+| 4 | Copy Path | Copy to clipboard |
+| 5 | Project Settings | IDE override, saved commands |
+| 6 | Add to Group | Organize into groups |
+| 7 | Hide from List | Reversible |
+| 8 | Delete Project | With confirmation |
 
 ## Configuration
 
-Config file: `~/.config/pjf/config.yaml`
+Config: `~/.config/pjf/config.yaml` — most settings manageable from the TUI (press `s`).
 
-Most settings can be managed from the TUI (press `s`), but here's the full config for reference:
+<details>
+<summary>Full config reference</summary>
 
 ```yaml
-# Directories to scan for projects
 scan_dirs:
   - ~/Source
   - ~/work
 
-# Additional directories to exclude from scanning
 extra_excludes:
   - ~/Source/archived
 
-# Default IDE per project type (go, node, java, rust, python, unknown)
 default_ides:
   go: goland
   node: code
   _default: cursor
 
-# Per-project IDE override
 project_ides:
   ~/Source/special-project: zed
 
-# Global commands (available for all projects)
 global_commands:
   - name: Git Status
     command: git status
   - name: Docker Up
     command: docker compose up -d --build
 
-# Per-project commands
 project_commands:
   - path: ~/work/backend-api
     commands:
       - name: Run Tests
         command: go test ./...
-      - name: Build
-        command: go build ./...
 
-# Project groups
 groups:
   - name: Work
     collapsed: false
     projects:
       - ~/work/backend-api
       - ~/work/frontend
-  - name: Personal
-    collapsed: false
-    projects:
-      - ~/Source/my-blog
 
-# Hidden projects (managed via TUI)
 hidden_projects: []
-
-# Scan depth (default: 5)
 max_depth: 5
-
-# Cache TTL in hours (default: 24)
 cache_ttl: 24
 ```
+</details>
 
 ### IDE Detection
 
-pjf auto-detects IDEs from:
-- **PATH**: `code`, `cursor`, `idea`, `goland`, `webstorm`, `zed`, `claude`, `nvim`, `vim`
-- **macOS Apps**: `/Applications/`, JetBrains Toolbox paths
+pjf auto-detects IDEs from PATH (`code`, `cursor`, `idea`, `goland`, `webstorm`, `zed`, `claude`, `nvim`, `vim`) and macOS application directories (`/Applications/`, JetBrains Toolbox).
 
-Set a default IDE per project type with `default_ides`, or override per project with `project_ides`.
+Set defaults per project type with `default_ides`, or override per project with `project_ides`.
 
 ## Platform Support
 
-- **macOS** — Full support
-- **Linux** — Planned
-- **Windows** — Planned
+| Platform | Status |
+|----------|--------|
+| macOS (Apple Silicon) | Supported |
+| macOS (Intel) | Supported |
+| Linux | Planned |
+| Windows | Planned |
 
-## Current Limitations
+## Contributing
 
-- macOS only (Linux and Windows support planned)
-- No `_linux.go` implementations yet for terminal opener and clipboard
-- No plugin system for custom IDE definitions (use config overrides)
-- Group ordering is manual only (no auto-sort)
+Issues and pull requests welcome.
 
 ## License
 
 MIT
-
-## Contributing
-
-Issues and pull requests welcome at [github.com/halilbulentorhon/pjf](https://github.com/halilbulentorhon/pjf).
