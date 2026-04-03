@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"os"
+	"os/exec"
 
 	"github.com/halilbulentorhon/pjf/internal/action"
 	"github.com/halilbulentorhon/pjf/internal/config"
+	"github.com/halilbulentorhon/pjf/internal/ide"
 	"github.com/halilbulentorhon/pjf/internal/project"
 	"github.com/halilbulentorhon/pjf/internal/scanner"
 )
@@ -20,11 +22,12 @@ type CacheStore interface {
 }
 
 type ProjectService struct {
-	Cfg      *config.Config
-	scanner  Scanner
-	cache    CacheStore
-	terminal action.TerminalOpener
-	clip     action.Clipboard
+	Cfg          *config.Config
+	scanner      Scanner
+	cache        CacheStore
+	terminal     action.TerminalOpener
+	clip         action.Clipboard
+	detectedIDEs []ide.IDE
 }
 
 func New(cfg *config.Config, s Scanner, c CacheStore) *ProjectService {
@@ -125,4 +128,63 @@ func (s *ProjectService) RemoveFromCache(p project.Project) error {
 		}
 	}
 	return s.cache.Save(filtered)
+}
+
+func (s *ProjectService) SetDetectedIDEs(ides []ide.IDE) {
+	s.detectedIDEs = ides
+}
+
+func (s *ProjectService) DetectedIDEs() []ide.IDE {
+	return s.detectedIDEs
+}
+
+func (s *ProjectService) ResolveIDE(p project.Project) (ide.IDE, bool) {
+	if len(s.detectedIDEs) == 0 {
+		return ide.IDE{}, false
+	}
+
+	if s.Cfg.ProjectIDEs != nil {
+		if slug, ok := s.Cfg.ProjectIDEs[p.Path]; ok {
+			if found, ok := ide.FindBySlug(s.detectedIDEs, slug); ok {
+				return found, true
+			}
+		}
+	}
+
+	if s.Cfg.DefaultIDEs != nil {
+		if slug, ok := s.Cfg.DefaultIDEs[p.ProjectType]; ok {
+			if found, ok := ide.FindBySlug(s.detectedIDEs, slug); ok {
+				return found, true
+			}
+		}
+		if slug, ok := s.Cfg.DefaultIDEs["_default"]; ok {
+			if found, ok := ide.FindBySlug(s.detectedIDEs, slug); ok {
+				return found, true
+			}
+		}
+	}
+
+	return s.detectedIDEs[0], true
+}
+
+func (s *ProjectService) OpenIDE(p project.Project, i ide.IDE) error {
+	switch i.Kind {
+	case "terminal":
+		return s.terminal.OpenWithCommand(p.Path, i.Slug)
+	default:
+		if _, err := exec.LookPath(i.Slug); err == nil {
+			return exec.Command(i.Slug, p.Path).Start()
+		}
+		if i.Path != "" {
+			return exec.Command("open", "-a", i.Path, p.Path).Start()
+		}
+		return exec.Command(i.Slug, p.Path).Start()
+	}
+}
+
+func (s *ProjectService) SetProjectIDE(p project.Project, ideSlug string) {
+	if s.Cfg.ProjectIDEs == nil {
+		s.Cfg.ProjectIDEs = make(map[string]string)
+	}
+	s.Cfg.ProjectIDEs[p.Path] = ideSlug
 }

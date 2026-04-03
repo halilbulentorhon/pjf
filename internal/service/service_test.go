@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/halilbulentorhon/pjf/internal/config"
+	"github.com/halilbulentorhon/pjf/internal/ide"
 	"github.com/halilbulentorhon/pjf/internal/project"
 	"github.com/halilbulentorhon/pjf/internal/scanner"
 )
@@ -205,5 +206,96 @@ func TestRemoveFromCache(t *testing.T) {
 	}
 	if mc.saved[0].Path != "/tmp/b" {
 		t.Errorf("expected /tmp/b to remain, got %s", mc.saved[0].Path)
+	}
+}
+
+func TestResolveIDEProjectOverride(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth:    5,
+		CacheTTL:    24,
+		DefaultIDEs: map[string]string{"go": "goland", "_default": "code"},
+		ProjectIDEs: map[string]string{"/tmp/special": "zed"},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.SetDetectedIDEs([]ide.IDE{
+		{Name: "GoLand", Slug: "goland"},
+		{Name: "VS Code", Slug: "code"},
+		{Name: "Zed", Slug: "zed"},
+	})
+
+	p := project.Project{Path: "/tmp/special", ProjectType: "go"}
+	resolved, ok := svc.ResolveIDE(p)
+	if !ok {
+		t.Fatal("expected to resolve IDE")
+	}
+	if resolved.Slug != "zed" {
+		t.Errorf("expected zed (project override), got %s", resolved.Slug)
+	}
+}
+
+func TestResolveIDETypeDefault(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth:    5,
+		CacheTTL:    24,
+		DefaultIDEs: map[string]string{"go": "goland", "_default": "code"},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.SetDetectedIDEs([]ide.IDE{
+		{Name: "GoLand", Slug: "goland"},
+		{Name: "VS Code", Slug: "code"},
+	})
+
+	p := project.Project{Path: "/tmp/myapp", ProjectType: "go"}
+	resolved, ok := svc.ResolveIDE(p)
+	if !ok {
+		t.Fatal("expected to resolve IDE")
+	}
+	if resolved.Slug != "goland" {
+		t.Errorf("expected goland (type default), got %s", resolved.Slug)
+	}
+}
+
+func TestResolveIDEFallback(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth:    5,
+		CacheTTL:    24,
+		DefaultIDEs: map[string]string{"_default": "code"},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.SetDetectedIDEs([]ide.IDE{
+		{Name: "VS Code", Slug: "code"},
+	})
+
+	p := project.Project{Path: "/tmp/unknown", ProjectType: "unknown"}
+	resolved, ok := svc.ResolveIDE(p)
+	if !ok {
+		t.Fatal("expected to resolve IDE")
+	}
+	if resolved.Slug != "code" {
+		t.Errorf("expected code (_default), got %s", resolved.Slug)
+	}
+}
+
+func TestResolveIDENoIDEs(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	svc.SetDetectedIDEs(nil)
+
+	p := project.Project{Path: "/tmp/x"}
+	_, ok := svc.ResolveIDE(p)
+	if ok {
+		t.Error("expected no IDE resolved")
+	}
+}
+
+func TestSetProjectIDE(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	p := project.Project{Path: "/tmp/myapp"}
+
+	svc.SetProjectIDE(p, "goland")
+
+	if svc.Cfg.ProjectIDEs["/tmp/myapp"] != "goland" {
+		t.Error("expected project IDE to be set")
 	}
 }
