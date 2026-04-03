@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"os"
 
 	"github.com/halilbulentorhon/pjf/internal/action"
 	"github.com/halilbulentorhon/pjf/internal/config"
@@ -74,4 +75,54 @@ func (s *ProjectService) CopyPath(p project.Project) error {
 
 func (s *ProjectService) SaveConfig(path string) error {
 	return config.Save(path, s.Cfg)
+}
+
+func (s *ProjectService) HideProject(p project.Project) {
+	for _, h := range s.Cfg.HiddenProjects {
+		if h == p.Path {
+			return
+		}
+	}
+	s.Cfg.HiddenProjects = append(s.Cfg.HiddenProjects, p.Path)
+}
+
+func (s *ProjectService) UnhideProject(p project.Project) {
+	filtered := s.Cfg.HiddenProjects[:0]
+	for _, h := range s.Cfg.HiddenProjects {
+		if h != p.Path {
+			filtered = append(filtered, h)
+		}
+	}
+	s.Cfg.HiddenProjects = filtered
+}
+
+func (s *ProjectService) DeleteProject(p project.Project) error {
+	if err := os.RemoveAll(p.Path); err != nil {
+		return err
+	}
+	s.UnhideProject(p)
+	return nil
+}
+
+func (s *ProjectService) IsHidden(p project.Project) bool {
+	for _, h := range s.Cfg.HiddenProjects {
+		if h == p.Path {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *ProjectService) RemoveFromCache(p project.Project) error {
+	c, err := s.cache.Load()
+	if err != nil || c == nil {
+		return err
+	}
+	filtered := c.Projects[:0]
+	for _, proj := range c.Projects {
+		if proj.Path != p.Path {
+			filtered = append(filtered, proj)
+		}
+	}
+	return s.cache.Save(filtered)
 }
