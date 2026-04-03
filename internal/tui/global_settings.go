@@ -18,10 +18,10 @@ const (
 	tabScan settingsTab = iota
 	tabIDEs
 	tabCommands
-	tabOther
+	tabGroups
 )
 
-var tabNames = []string{"Scan", "IDEs", "Commands", "Other"}
+var tabNames = []string{"Scan", "IDEs", "Commands", "Groups"}
 
 type pendingOp int
 
@@ -36,11 +36,15 @@ const (
 	opEditMaxDepth
 	opEditCacheTTL
 	opEditIDESlug
+	opAddGroupName
+	opRenameGroup
 )
 
 type globalSettingsResult struct {
 	changed bool
 }
+
+var projectTypes = []string{"go", "node", "java", "rust", "python", "unknown", "_default"}
 
 type globalSettingsModel struct {
 	svc             *service.ProjectService
@@ -56,6 +60,12 @@ type globalSettingsModel struct {
 	picking     bool
 	idePicker   ideSubmenuModel
 	editIDEType string
+
+	typePicking      bool
+	typePickerCursor int
+
+	scanAddPicking      bool
+	scanAddPickerCursor int
 }
 
 func newGlobalSettingsModel(svc *service.ProjectService) globalSettingsModel {
@@ -67,7 +77,7 @@ func (m globalSettingsModel) NeedsRescan() bool {
 }
 
 func (m globalSettingsModel) Inputting() bool {
-	return m.inputting
+	return m.inputting || m.typePicking || m.scanAddPicking
 }
 
 func (m globalSettingsModel) Picking() bool {
@@ -94,13 +104,75 @@ func (m globalSettingsModel) tabItemCount() int {
 		return len(m.ideKeys())
 	case tabCommands:
 		return len(m.svc.Cfg.GlobalCommands)
-	case tabOther:
-		return 2
+	case tabGroups:
+		return len(m.svc.Cfg.Groups)
 	}
 	return 0
 }
 
 func (m globalSettingsModel) Update(msg tea.Msg) (globalSettingsModel, tea.Cmd, globalSettingsResult) {
+	if m.typePicking {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "up", "k":
+				if m.typePickerCursor > 0 {
+					m.typePickerCursor--
+				}
+			case "down", "j":
+				if m.typePickerCursor < len(projectTypes)-1 {
+					m.typePickerCursor++
+				}
+			case "enter":
+				selected := projectTypes[m.typePickerCursor]
+				m.typePicking = false
+				m.tempStr = selected
+				m.pending = opAddIDESlug
+				m.picking = true
+				m.idePicker = newIDEPickerModel(project.Project{}, m.svc)
+				return m, nil, globalSettingsResult{}
+			case "esc":
+				m.typePicking = false
+				m.pending = opNone
+				return m, nil, globalSettingsResult{}
+			}
+		}
+		return m, nil, globalSettingsResult{}
+	}
+
+	if m.scanAddPicking {
+		var scanAddOptions = []string{"Scan Directory", "Exclude Directory"}
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "up", "k":
+				if m.scanAddPickerCursor > 0 {
+					m.scanAddPickerCursor--
+				}
+			case "down", "j":
+				if m.scanAddPickerCursor < len(scanAddOptions)-1 {
+					m.scanAddPickerCursor++
+				}
+			case "enter":
+				m.scanAddPicking = false
+				if m.scanAddPickerCursor == 0 {
+					m.inputting = true
+					m.pending = opAddScanDir
+					m.input = newSettingsInput("Add Scan Directory", "~/path...")
+				} else {
+					m.inputting = true
+					m.pending = opAddExclude
+					m.input = newSettingsInput("Add Exclude", "path...")
+				}
+				return m, textinput.Blink, globalSettingsResult{}
+			case "esc":
+				m.scanAddPicking = false
+				return m, nil, globalSettingsResult{}
+			}
+		}
+		return m, nil, globalSettingsResult{}
+	}
+
 	if m.inputting {
 		inp, cmd, result := m.input.Update(msg)
 		m.input = inp
@@ -140,7 +212,7 @@ func (m globalSettingsModel) Update(msg tea.Msg) (globalSettingsModel, tea.Cmd, 
 				m.activeTab--
 			}
 		case "right":
-			if m.activeTab < tabOther {
+			if m.activeTab < tabGroups {
 				m.activeTab++
 			}
 		case "up":
@@ -179,12 +251,6 @@ func (m globalSettingsModel) handleInputComplete(value string) (globalSettingsMo
 		m.scanDirsChanged = true
 		m.pending = opNone
 		return m, nil, globalSettingsResult{changed: true}
-	case opAddIDEType:
-		m.tempStr = value
-		m.pending = opAddIDESlug
-		m.picking = true
-		m.idePicker = newIDEPickerModel(project.Project{}, m.svc)
-		return m, nil, globalSettingsResult{}
 	case opAddCmdName:
 		m.tempStr = value
 		m.pending = opAddCmdCommand
@@ -205,6 +271,14 @@ func (m globalSettingsModel) handleInputComplete(value string) (globalSettingsMo
 		if n, err := strconv.Atoi(value); err == nil && n > 0 {
 			m.svc.SetCacheTTL(n)
 		}
+		m.pending = opNone
+		return m, nil, globalSettingsResult{changed: true}
+	case opAddGroupName:
+		m.svc.AddGroup(value)
+		m.pending = opNone
+		return m, nil, globalSettingsResult{changed: true}
+	case opRenameGroup:
+		m.svc.RenameGroup(m.tempStr, value)
 		m.pending = opNone
 		return m, nil, globalSettingsResult{changed: true}
 	}
@@ -231,26 +305,22 @@ func (m globalSettingsModel) handlePickComplete(slug string) (globalSettingsMode
 func (m globalSettingsModel) handleAdd() (globalSettingsModel, tea.Cmd, globalSettingsResult) {
 	switch m.activeTab {
 	case tabScan:
-		cursor := m.cursors[tabScan]
-		if cursor < len(m.svc.Cfg.ScanDirs) {
-			m.inputting = true
-			m.pending = opAddScanDir
-			m.input = newSettingsInput("Add Scan Directory", "~/path...")
-		} else {
-			m.inputting = true
-			m.pending = opAddExclude
-			m.input = newSettingsInput("Add Exclude", "path...")
-		}
-		return m, textinput.Blink, globalSettingsResult{}
+		m.scanAddPicking = true
+		m.scanAddPickerCursor = 0
+		return m, nil, globalSettingsResult{}
 	case tabIDEs:
-		m.inputting = true
-		m.pending = opAddIDEType
-		m.input = newSettingsInput("Project Type", "go, node, java, _default...")
-		return m, textinput.Blink, globalSettingsResult{}
+		m.typePicking = true
+		m.typePickerCursor = 0
+		return m, nil, globalSettingsResult{}
 	case tabCommands:
 		m.inputting = true
 		m.pending = opAddCmdName
 		m.input = newSettingsInput("Command Name", "name...")
+		return m, textinput.Blink, globalSettingsResult{}
+	case tabGroups:
+		m.inputting = true
+		m.pending = opAddGroupName
+		m.input = newSettingsInput("Group Name", "name...")
 		return m, textinput.Blink, globalSettingsResult{}
 	}
 	return m, nil, globalSettingsResult{}
@@ -295,6 +365,14 @@ func (m globalSettingsModel) handleDelete() (globalSettingsModel, tea.Cmd, globa
 			}
 			return m, nil, globalSettingsResult{changed: true}
 		}
+	case tabGroups:
+		if cursor < len(m.svc.Cfg.Groups) {
+			m.svc.RemoveGroup(m.svc.Cfg.Groups[cursor].Name)
+			if m.cursors[tabGroups] >= m.tabItemCount() && m.cursors[tabGroups] > 0 {
+				m.cursors[tabGroups]--
+			}
+			return m, nil, globalSettingsResult{changed: true}
+		}
 	}
 	return m, nil, globalSettingsResult{}
 }
@@ -311,17 +389,12 @@ func (m globalSettingsModel) handleEdit() (globalSettingsModel, tea.Cmd, globalS
 			m.idePicker = newIDEPickerModel(project.Project{}, m.svc)
 			return m, nil, globalSettingsResult{}
 		}
-	case tabOther:
-		if cursor == 0 {
+	case tabGroups:
+		if cursor < len(m.svc.Cfg.Groups) {
+			m.tempStr = m.svc.Cfg.Groups[cursor].Name
 			m.inputting = true
-			m.pending = opEditMaxDepth
-			m.input = newSettingsInput("Max Depth", strconv.Itoa(m.svc.Cfg.MaxDepth))
-			return m, textinput.Blink, globalSettingsResult{}
-		}
-		if cursor == 1 {
-			m.inputting = true
-			m.pending = opEditCacheTTL
-			m.input = newSettingsInput("Cache TTL (hours)", strconv.Itoa(m.svc.Cfg.CacheTTL))
+			m.pending = opRenameGroup
+			m.input = newSettingsInput("Rename Group", m.svc.Cfg.Groups[cursor].Name)
 			return m, textinput.Blink, globalSettingsResult{}
 		}
 	}
@@ -329,6 +402,35 @@ func (m globalSettingsModel) handleEdit() (globalSettingsModel, tea.Cmd, globalS
 }
 
 func (m globalSettingsModel) View() string {
+	if m.typePicking {
+		return actionMenuStyle.Render(func() string {
+			s := titleStyle.Render("Select Project Type") + "\n\n"
+			for i, pt := range projectTypes {
+				if i == m.typePickerCursor {
+					s += selectedItemStyle.Render("▸ "+pt) + "\n"
+				} else {
+					s += itemStyle.Render("  "+pt) + "\n"
+				}
+			}
+			s += "\n" + helpStyle.Render("enter: select  esc: cancel")
+			return s
+		}())
+	}
+	if m.scanAddPicking {
+		var scanAddOptions = []string{"Scan Directory", "Exclude Directory"}
+		return actionMenuStyle.Render(func() string {
+			s := titleStyle.Render("Add to Scan") + "\n\n"
+			for i, opt := range scanAddOptions {
+				if i == m.scanAddPickerCursor {
+					s += selectedItemStyle.Render("▸ "+opt) + "\n"
+				} else {
+					s += itemStyle.Render("  "+opt) + "\n"
+				}
+			}
+			s += "\n" + helpStyle.Render("enter: select  esc: cancel")
+			return s
+		}())
+	}
 	if m.inputting {
 		return m.input.View()
 	}
@@ -401,21 +503,33 @@ func (m globalSettingsModel) View() string {
 				}
 			}
 
-		case tabOther:
-			items := []string{
-				fmt.Sprintf("Max Depth: %d", m.svc.Cfg.MaxDepth),
-				fmt.Sprintf("Cache TTL: %dh", m.svc.Cfg.CacheTTL),
+		case tabGroups:
+			if len(m.svc.Cfg.Groups) == 0 {
+				s += helpStyle.Render("  (no groups)") + "\n"
 			}
-			for i, item := range items {
+			for i, g := range m.svc.Cfg.Groups {
+				label := fmt.Sprintf("%s (%d projects)", g.Name, len(g.Projects))
 				if i == cursor {
-					s += selectedItemStyle.Render("▸ "+item) + "\n"
+					s += selectedItemStyle.Render("▸ "+label) + "\n"
 				} else {
-					s += itemStyle.Render("  "+item) + "\n"
+					s += itemStyle.Render("  "+label) + "\n"
 				}
 			}
+
 		}
 
-		s += "\n" + helpStyle.Render("←/→: tab  ↑/↓: navigate  a: add  d: delete  e: edit  esc: back")
+		var hint string
+		switch m.activeTab {
+		case tabScan:
+			hint = "←/→: tab  ↑/↓: navigate  a: add  d: delete  esc: back"
+		case tabIDEs:
+			hint = "←/→: tab  ↑/↓: navigate  a: add  e: edit  d: delete  esc: back"
+		case tabCommands:
+			hint = "←/→: tab  ↑/↓: navigate  a: add  d: delete  esc: back"
+		case tabGroups:
+			hint = "←/→: tab  ↑/↓: navigate  a: add  e: rename  d: delete  esc: back"
+		}
+		s += "\n" + helpStyle.Render(hint)
 		return s
 	}())
 }
