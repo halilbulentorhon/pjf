@@ -299,3 +299,73 @@ func TestSetProjectIDE(t *testing.T) {
 		t.Error("expected project IDE to be set")
 	}
 }
+
+func TestResolveCommandsProjectAndGlobal(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth: 5,
+		CacheTTL: 24,
+		GlobalCommands: []config.CommandDef{
+			{Name: "Git Status", Command: "git status"},
+			{Name: "Git Pull", Command: "git pull"},
+		},
+		ProjectCommands: []config.ProjectCommandSet{
+			{
+				Path: "/tmp/myapp",
+				Commands: []config.CommandDef{
+					{Name: "Run Tests", Command: "go test ./..."},
+					{Name: "Git Status", Command: "git status -s"},
+				},
+			},
+		},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	p := project.Project{Path: "/tmp/myapp"}
+
+	cmds := svc.ResolveCommands(p)
+	if len(cmds) != 3 {
+		t.Fatalf("expected 3 commands, got %d", len(cmds))
+	}
+	if cmds[0].Name != "Run Tests" || !cmds[0].IsProject {
+		t.Error("expected first command to be project Run Tests")
+	}
+	if cmds[1].Name != "Git Status" || !cmds[1].IsProject {
+		t.Error("expected second command to be project Git Status (overrides global)")
+	}
+	if cmds[2].Name != "Git Pull" || cmds[2].IsProject {
+		t.Error("expected third command to be global Git Pull")
+	}
+}
+
+func TestResolveCommandsNoProject(t *testing.T) {
+	cfg := &config.Config{
+		MaxDepth: 5,
+		CacheTTL: 24,
+		GlobalCommands: []config.CommandDef{
+			{Name: "Git Status", Command: "git status"},
+		},
+	}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	p := project.Project{Path: "/tmp/other"}
+
+	cmds := svc.ResolveCommands(p)
+	if len(cmds) != 1 {
+		t.Fatalf("expected 1 command, got %d", len(cmds))
+	}
+	if cmds[0].IsProject {
+		t.Error("expected global command")
+	}
+}
+
+func TestRunCommand(t *testing.T) {
+	cfg := &config.Config{MaxDepth: 5, CacheTTL: 24}
+	svc := New(cfg, &mockScanner{}, &mockCache{})
+	p := project.Project{Path: "/tmp"}
+
+	output, err := svc.RunCommand(p, "echo hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output != "hello\n" {
+		t.Errorf("expected 'hello\\n', got %q", output)
+	}
+}

@@ -188,3 +188,43 @@ func (s *ProjectService) SetProjectIDE(p project.Project, ideSlug string) {
 	}
 	s.Cfg.ProjectIDEs[p.Path] = ideSlug
 }
+
+type ResolvedCommand struct {
+	Name      string
+	Command   string
+	IsProject bool
+}
+
+func (s *ProjectService) ResolveCommands(p project.Project) []ResolvedCommand {
+	var projectCmds []config.CommandDef
+	for _, pc := range s.Cfg.ProjectCommands {
+		expanded := pc.Path
+		if home, err := os.UserHomeDir(); err == nil && len(expanded) > 0 && expanded[0] == '~' {
+			expanded = home + expanded[1:]
+		}
+		if expanded == p.Path {
+			projectCmds = pc.Commands
+			break
+		}
+	}
+
+	projectNames := make(map[string]bool)
+	var result []ResolvedCommand
+	for _, cmd := range projectCmds {
+		result = append(result, ResolvedCommand{Name: cmd.Name, Command: cmd.Command, IsProject: true})
+		projectNames[cmd.Name] = true
+	}
+	for _, cmd := range s.Cfg.GlobalCommands {
+		if !projectNames[cmd.Name] {
+			result = append(result, ResolvedCommand{Name: cmd.Name, Command: cmd.Command, IsProject: false})
+		}
+	}
+	return result
+}
+
+func (s *ProjectService) RunCommand(p project.Project, command string) (string, error) {
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Dir = p.Path
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
